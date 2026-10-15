@@ -1,9 +1,9 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQmlContext>
 #include <QQuickWindow>
 
 #include "controller/NavigationController.h"
+#include "location/DummyPositionSource.h"
 #include "location/LocationProvider.h"
 
 int main(int argc, char *argv[])
@@ -14,16 +14,21 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
-    LocationProvider locationProvider;
+    // Dummy source until real positioning is available. Replace with e.g.
+    // QGeoPositionInfoSource::createDefaultSource() or QNmeaPositionInfoSource.
+    DummyPositionSource positionSource(QGeoCoordinate(50.0614, 19.9366));
 
+    LocationProvider locationProvider(&positionSource);
     NavigationController controller(
         &locationProvider
     );
 
-    engine.rootContext()->setContextProperty(
-        "controller",
-        &controller
-    );
+    engine.setInitialProperties({
+        { "controller", QVariant::fromValue(&controller) },
+        { "locationProvider", QVariant::fromValue(&locationProvider) },
+    });
+
+    locationProvider.start();
 
     engine.loadFromModule("navigation", "Main");
 

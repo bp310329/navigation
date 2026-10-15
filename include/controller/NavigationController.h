@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QtQml/qqmlregistration.h>
 
 #include "data/Destination.h"
 
@@ -8,6 +9,8 @@ class LocationProvider;
 
 class NavigationController : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    QML_UNCREATABLE("Provided by the application")
 
     Q_PROPERTY(bool navigating
                READ navigating

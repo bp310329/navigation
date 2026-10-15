@@ -24,6 +24,7 @@ qt_add_executable(appnavigation
     src/bluetooth/BluetoothManager.cpp
     src/data/DestinationParser.cpp
     src/location/LocationProvider.cpp
+    src/location/DummyPositionSource.cpp
 
     include/bluetooth/BluetoothManager.h
     include/controller/NavigationController.h
@@ -31,11 +32,14 @@ qt_add_executable(appnavigation
     include/data/DestinationParser.h
     include/data/Position.h
     include/location/LocationProvider.h
+    include/location/DummyPositionSource.h
 )
 
 qt_add_qml_module(appnavigation
     URI navigation
     VERSION 1.0
+    DEPENDENCIES
+        QtPositioning
     QML_FILES
         ui/Main.qml
         ui/components/MapView.qml
@@ -90,6 +94,10 @@ endif()
 
 target_include_directories(appnavigation PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    # Generated QML type registration includes QML_ELEMENT headers by file name
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/controller"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/data"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/location"
 )
 
 include(GNUInstallDirs)

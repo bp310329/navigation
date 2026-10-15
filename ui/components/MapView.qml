@@ -6,6 +6,23 @@ Item {
     id: root
     clip: true
 
+    // Current device location, bound from LocationProvider by the parent
+    property bool locationAvailable: false
+    property geoCoordinate currentCoordinate
+
+    readonly property bool hasLocation: locationAvailable && currentCoordinate.isValid
+    property bool centeredOnLocation: false
+
+    function centerOnCurrentLocation() {
+        if (!hasLocation)
+            return
+        map.center = currentCoordinate
+        centeredOnLocation = true
+    }
+
+    // Center on the first fix, then leave the view to the user
+    onHasLocationChanged: if (!centeredOnLocation) centerOnCurrentLocation()
+
     Plugin {
         id: mapPlugin
         name: "maplibre"
@@ -25,6 +42,25 @@ Item {
         center: QtPositioning.coordinate(50.0614, 19.9366)
 
         property geoCoordinate startCentroid
+
+        // Current location marker
+        MapQuickItem {
+            id: currentLocationMarker
+            visible: root.hasLocation
+            coordinate: root.currentCoordinate
+            anchorPoint.x: locationDot.width / 2
+            anchorPoint.y: locationDot.height / 2
+
+            sourceItem: Rectangle {
+                id: locationDot
+                width: 20
+                height: 20
+                radius: width / 2
+                color: "#1a73e8"
+                border.color: "white"
+                border.width: 3
+            }
+        }
 
         // Pan with mouse drag or one finger
         DragHandler {
