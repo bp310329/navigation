@@ -1,0 +1,7 @@
+{
+    "cmake.options.statusBarVisibility": "visible",
+    "cmake.buildDirectory": "${workspaceFolder}/builds/${buildKit}/${buildType}",
+    "cmake.configureSettings": {
+    "CMAKE_PREFIX_PATH": "C:/Qt/6.10.3/msvc2022_64;C:/dev/maplibre-install"
+  }
+}
