@@ -13,6 +13,17 @@ Item {
     readonly property bool hasLocation: locationAvailable && currentCoordinate.isValid
     property bool centeredOnLocation: false
 
+    // Destination placed by tapping the map
+    property geoCoordinate destinationCoordinate
+    readonly property bool hasDestination: destinationCoordinate.isValid
+
+    // Calculated route geometry, bound from RoutingService by the parent
+    property var routePath: []
+
+    function clearDestination() {
+        destinationCoordinate = QtPositioning.coordinate()
+    }
+
     function centerOnCurrentLocation() {
         if (!hasLocation)
             return
@@ -22,6 +33,9 @@ Item {
 
     // Center on the first fix, then leave the view to the user
     onHasLocationChanged: if (!centeredOnLocation) centerOnCurrentLocation()
+
+    // Show the whole route once it arrives
+    onRoutePathChanged: if (routePath.length > 1) Qt.callLater(map.fitViewportToMapItems, [routeLine])
 
     Plugin {
         id: mapPlugin
@@ -39,9 +53,51 @@ Item {
 
         plugin: mapPlugin
         zoomLevel: 12
-        center: QtPositioning.coordinate(50.0614, 19.9366)
+        center: QtPositioning.coordinate(50.2312, 18.9688)
 
         property geoCoordinate startCentroid
+
+        // Calculated route
+        MapPolyline {
+            id: routeLine
+            visible: root.routePath.length > 1
+            path: root.routePath
+            line.width: 6
+            line.color: "#1a73e8"
+        }
+
+        // Destination marker
+        MapQuickItem {
+            id: destinationMarker
+            visible: root.hasDestination
+            coordinate: root.destinationCoordinate
+            anchorPoint.x: destinationPin.width / 2
+            anchorPoint.y: destinationPin.height
+
+            sourceItem: Item {
+                id: destinationPin
+                width: 24
+                height: 34
+
+                Rectangle {
+                    x: 0
+                    y: 0
+                    width: 24
+                    height: 24
+                    radius: width / 2
+                    color: "#d93025"
+                    border.color: "white"
+                    border.width: 3
+                }
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    width: 3
+                    height: 12
+                    color: "#d93025"
+                }
+            }
+        }
 
         // Current location marker
         MapQuickItem {
@@ -59,6 +115,14 @@ Item {
                 color: "#1a73e8"
                 border.color: "white"
                 border.width: 3
+            }
+        }
+
+        // Tap / click to place the destination
+        TapHandler {
+            id: tap
+            onTapped: (eventPoint) => {
+                root.destinationCoordinate = map.toCoordinate(eventPoint.position, false)
             }
         }
 

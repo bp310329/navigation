@@ -11,6 +11,7 @@ ApplicationWindow {
 
     required property NavigationController controller
     required property LocationProvider locationProvider
+    required property RoutingService routingService
 
     ColumnLayout {
         anchors.fill: parent
@@ -29,6 +30,10 @@ ApplicationWindow {
 
             locationAvailable: window.locationProvider.locationAvailable
             currentCoordinate: window.locationProvider.position.coordinate
+            routePath: window.routingService.path
+
+            // A new destination invalidates the old route
+            onDestinationCoordinateChanged: window.routingService.clearRoute()
         }
 
         RowLayout {
@@ -40,6 +45,31 @@ ApplicationWindow {
                 text: "Center"
                 enabled: mapView.hasLocation
                 onClicked: mapView.centerOnCurrentLocation()
+            }
+
+            Button {
+                palette.buttonText: "black"
+                text: "Create Route"
+                visible: mapView.hasDestination
+                enabled: mapView.hasLocation && !window.routingService.busy
+                onClicked: window.routingService.calculateRoute(
+                               mapView.currentCoordinate,
+                               mapView.destinationCoordinate)
+            }
+
+            Button {
+                palette.buttonText: "black"
+                text: "Clear Destination"
+                visible: mapView.hasDestination
+                onClicked: mapView.clearDestination()
+            }
+
+            Label {
+                visible: text.length > 0
+                text: window.routingService.busy
+                      ? "Calculating route..."
+                      : window.routingService.errorString
+                color: window.routingService.busy ? "black" : "#d93025"
             }
 
             Button {

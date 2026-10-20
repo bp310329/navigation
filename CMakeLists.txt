@@ -11,6 +11,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     Quick
     Location
     Positioning
+    Network
 )
 
 # MapLibre Native for Qt
@@ -25,6 +26,7 @@ qt_add_executable(appnavigation
     src/data/DestinationParser.cpp
     src/location/LocationProvider.cpp
     src/location/DummyPositionSource.cpp
+    src/routing/RoutingService.cpp
 
     include/bluetooth/BluetoothManager.h
     include/controller/NavigationController.h
@@ -33,6 +35,7 @@ qt_add_executable(appnavigation
     include/data/Position.h
     include/location/LocationProvider.h
     include/location/DummyPositionSource.h
+    include/routing/RoutingService.h
 )
 
 qt_add_qml_module(appnavigation
@@ -60,6 +63,7 @@ target_link_libraries(appnavigation
         Qt6::Quick
         Qt6::Location
         Qt6::Positioning
+        Qt6::Network
         QMapLibre::Location
 )
 
@@ -98,6 +102,7 @@ target_include_directories(appnavigation PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include/controller"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/data"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/location"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/routing"
 )
 
 include(GNUInstallDirs)
