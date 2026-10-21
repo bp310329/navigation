@@ -16,13 +16,13 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: 14
-        anchors.rightMargin: 14
-        spacing: 8
+        anchors.leftMargin: 20
+        anchors.rightMargin: 20
+        spacing: 12
 
         Icon {
             path: root.bluetoothConnected ? Icons.bluetooth : Icons.bluetoothDisabled
-            size: 20
+            size: Theme.iconSmall
             color: root.bluetoothConnected ? Theme.accentOnDark : Theme.textOnDarkMuted
         }
 
@@ -51,7 +51,7 @@ Rectangle {
             }
         }
 
-        Item { implicitWidth: 6 }
+        Item { implicitWidth: 8 }
 
         Text {
             text: root.batteryLevel + "%"

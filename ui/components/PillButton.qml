@@ -2,13 +2,15 @@ import QtQuick
 import QtQuick.Templates as T
 import navigation
 
-// Large rounded button. Primary is filled with the accent color,
-// secondary is white with an outline.
+// Large rounded button. Primary is filled with `color`, secondary is white
+// with an outline.
 T.Button {
     id: control
 
     property string iconPath
     property bool primary: true
+    property color color: Theme.accent
+    property color pressedColor: Theme.accentPressed
 
     readonly property color foreground: !enabled ? Theme.surface
                                       : primary ? Theme.textOnAccent
@@ -17,9 +19,9 @@ T.Button {
     implicitHeight: Theme.touchTarget
     implicitWidth: Math.max(implicitHeight,
                             implicitContentWidth + leftPadding + rightPadding)
-    leftPadding: iconPath && !text ? 0 : 22
+    leftPadding: iconPath && !text ? 0 : 32
     rightPadding: leftPadding
-    spacing: 10
+    spacing: 14
 
     font.pixelSize: Theme.fontButton
     font.weight: Font.DemiBold
@@ -40,7 +42,7 @@ T.Button {
                 visible: control.iconPath.length > 0
                 anchors.verticalCenter: parent.verticalCenter
                 path: control.iconPath
-                size: 24
+                size: Theme.iconMedium
                 color: control.foreground
             }
 
@@ -57,9 +59,9 @@ T.Button {
     background: Rectangle {
         radius: height / 2
         color: !control.enabled ? Theme.disabled
-             : control.primary ? (control.pressed ? Theme.accentPressed : Theme.accent)
+             : control.primary ? (control.pressed ? control.pressedColor : control.color)
                                : (control.pressed ? Theme.surfacePressed : Theme.surface)
-        border.width: control.primary ? 0 : 1
+        border.width: control.primary ? 0 : 2
         border.color: Theme.outline
     }
 }

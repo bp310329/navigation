@@ -52,12 +52,15 @@ qt_add_qml_module(appnavigation
         ui/Theme.qml
         ui/Icons.qml
         ui/components/BatteryIndicator.qml
+        ui/components/Card.qml
         ui/components/FloatingButton.qml
         ui/components/Icon.qml
+        ui/components/ManeuverBanner.qml
         ui/components/MapView.qml
         ui/components/PillButton.qml
         ui/components/RoutePanel.qml
         ui/components/StatusBar.qml
+        ui/components/TripSummary.qml
     RESOURCES
         assets/mapExample.png
 )

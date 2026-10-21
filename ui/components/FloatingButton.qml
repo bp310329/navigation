@@ -20,7 +20,7 @@ T.Button {
         Icon {
             anchors.centerIn: parent
             path: control.iconPath
-            size: 26
+            size: Theme.iconLarge
             color: control.enabled ? control.iconColor : Theme.disabled
         }
     }

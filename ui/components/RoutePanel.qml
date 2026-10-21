@@ -1,12 +1,11 @@
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
 import navigation
 
 // Floating card at the bottom of the screen. Without a destination it offers
 // navigation with a route received over Bluetooth; with a destination picked
-// on the map it offers creating and clearing the route.
-Rectangle {
+// on the map it offers creating, clearing and starting the route.
+Card {
     id: root
 
     property bool hasDestination: false
@@ -16,24 +15,14 @@ Rectangle {
     property string errorString
     property bool canCreateRoute: true
 
-    signal startNavigationClicked()
+    signal startNavigationClicked()     // route received over Bluetooth
+    signal startRouteClicked()          // route created from the map destination
     signal createRouteClicked()
     signal clearClicked()
 
     readonly property bool hasError: errorString.length > 0
 
-    implicitHeight: content.implicitHeight + 2 * 16
-    radius: Theme.cardRadius
-    color: Theme.surface
-
-    layer.enabled: true
-    layer.effect: MultiEffect {
-        shadowEnabled: true
-        shadowColor: "#000000"
-        shadowOpacity: 0.25
-        shadowBlur: 0.8
-        shadowVerticalOffset: 3
-    }
+    implicitHeight: content.implicitHeight + 2 * Theme.cardPadding
 
     function formatCoordinate(coordinate) {
         if (!coordinate || !coordinate.isValid)
@@ -46,31 +35,31 @@ Rectangle {
     ColumnLayout {
         id: content
         anchors.fill: parent
-        anchors.margins: 16
-        spacing: 14
+        anchors.margins: Theme.cardPadding
+        spacing: 20
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: 18
 
             // Leading icon in a tinted circle
             Rectangle {
-                implicitWidth: 44
-                implicitHeight: 44
+                implicitWidth: 64
+                implicitHeight: 64
                 radius: width / 2
                 color: root.hasError ? Theme.dangerSoft : Theme.accentSoft
 
                 Icon {
                     anchors.centerIn: parent
                     path: root.hasDestination ? Icons.place : Icons.bluetooth
-                    size: 24
+                    size: Theme.iconMedium
                     color: root.hasError ? Theme.danger : Theme.accent
                 }
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 2
+                spacing: 4
 
                 Text {
                     Layout.fillWidth: true
@@ -97,7 +86,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            spacing: 14
 
             PillButton {
                 visible: root.hasDestination
@@ -107,15 +96,28 @@ Rectangle {
                 onClicked: root.clearClicked()
             }
 
+            // Create route, or recalculate it once it exists
             PillButton {
-                Layout.fillWidth: true
-                iconPath: root.hasDestination ? Icons.directions : Icons.navigation
-                text: !root.hasDestination ? qsTr("Start navigation")
-                    : root.busy ? qsTr("Calculating…")
-                    : root.hasRoute ? qsTr("Recalculate route")
+                visible: root.hasDestination
+                Layout.fillWidth: !root.hasRoute
+                primary: !root.hasRoute
+                iconPath: Icons.directions
+                text: root.busy ? qsTr("Calculating…")
+                    : root.hasRoute ? qsTr("Recalculate")
                     : qsTr("Create route")
-                enabled: !root.hasDestination || (root.canCreateRoute && !root.busy)
-                onClicked: root.hasDestination ? root.createRouteClicked()
+                enabled: root.canCreateRoute && !root.busy
+                onClicked: root.createRouteClicked()
+            }
+
+            // Start navigating: over Bluetooth without a destination,
+            // along the created route with one
+            PillButton {
+                visible: !root.hasDestination || root.hasRoute
+                Layout.fillWidth: true
+                iconPath: Icons.navigation
+                text: qsTr("Start navigation")
+                enabled: !root.busy
+                onClicked: root.hasDestination ? root.startRouteClicked()
                                                : root.startNavigationClicked()
             }
         }

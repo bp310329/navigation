@@ -82,14 +82,14 @@ Item {
         MapPolyline {
             visible: root.routePath.length > 1
             path: root.routePath
-            line.width: 10
+            line.width: 14
             line.color: Theme.accentPressed
         }
         MapPolyline {
             id: routeLine
             visible: root.routePath.length > 1
             path: root.routePath
-            line.width: 6
+            line.width: 9
             line.color: Theme.accent
         }
 
@@ -105,7 +105,7 @@ Item {
             sourceItem: Icon {
                 id: destinationPin
                 path: Icons.place
-                size: 48
+                size: 72
                 color: Theme.danger
                 strokeColor: "white"
                 strokeWidth: 1.2
@@ -122,19 +122,19 @@ Item {
 
             sourceItem: Rectangle {
                 id: locationHalo
-                width: 48
-                height: 48
+                width: 72
+                height: 72
                 radius: width / 2
                 color: Qt.alpha(Theme.accent, 0.18)
 
                 Rectangle {
                     anchors.centerIn: parent
-                    width: 22
-                    height: 22
+                    width: 32
+                    height: 32
                     radius: width / 2
                     color: Theme.accent
                     border.color: "white"
-                    border.width: 3
+                    border.width: 4
                 }
             }
         }
