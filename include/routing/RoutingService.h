@@ -28,12 +28,17 @@ public:
     explicit RoutingService(const QUrl &serverUrl, QObject *parent = nullptr);
 
     const Route &route() const;
+    // Destination of the last calculateRoute() request
+    QGeoCoordinate destination() const;
     QVariantList path() const;
     bool busy() const;
     QString errorString() const;
 
+    // `heading` (degrees, optional) is the current direction of travel; it
+    // keeps the route from starting with a turn back the way we came
     Q_INVOKABLE void calculateRoute(const QGeoCoordinate &from,
-                                    const QGeoCoordinate &to);
+                                    const QGeoCoordinate &to,
+                                    double heading = -1.0);
     Q_INVOKABLE void clearRoute();
 
 signals:
@@ -56,6 +61,7 @@ private:
     QUrl m_serverUrl;
     QNetworkReply *m_pendingReply = nullptr;
     Route m_route;
+    QGeoCoordinate m_destination;
     QVariantList m_path;
     bool m_busy = false;
     QString m_errorString;

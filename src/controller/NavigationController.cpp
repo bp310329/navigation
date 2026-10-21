@@ -10,6 +10,13 @@ namespace {
 constexpr double ArrivalDistance = 25.0;
 // The "Then" maneuver is shown only when it follows the next one within this distance
 constexpr double ThenManeuverDistance = 400.0;
+
+// Farther than this from the route counts as off route...
+constexpr double OffRouteDistance = 40.0;
+// ...and staying off route this long triggers rerouting
+constexpr qint64 OffRouteDelayMs = 3000;
+// Minimum time between reroute requests (e.g. when far from any road)
+constexpr qint64 RerouteCooldownMs = 10000;
 }
 
 NavigationController::NavigationController(LocationProvider *locationProvider,
@@ -22,10 +29,16 @@ NavigationController::NavigationController(LocationProvider *locationProvider,
             this, &NavigationController::onPositionUpdated);
     connect(m_routingService, &RoutingService::routeChanged,
             this, &NavigationController::onRouteChanged);
+    // Request finished, whether with a new route or an error
+    connect(m_routingService, &RoutingService::busyChanged, this, [this] {
+        if (!m_routingService->busy())
+            setRerouting(false);
+    });
 }
 
 bool NavigationController::navigating() const { return m_navigating; }
 bool NavigationController::arrived() const { return m_arrived; }
+bool NavigationController::rerouting() const { return m_rerouting; }
 QString NavigationController::maneuverType() const { return m_maneuverType; }
 QString NavigationController::instruction() const { return m_instruction; }
 double NavigationController::distanceToManeuver() const { return m_distanceToManeuver; }
@@ -43,6 +56,9 @@ void NavigationController::startNavigation() {
 
     m_tracker.setRoute(route);
     m_arrived = false;
+    m_offRouteTimer.invalidate();
+    m_lastReroute.invalidate();
+    setRerouting(false);
     // Fill in the guidance before the panels become visible
     updateProgress(m_locationProvider->position());
     setNavigating(true);
@@ -50,6 +66,7 @@ void NavigationController::startNavigation() {
 
 void NavigationController::stopNavigation() {
     setNavigating(false);
+    setRerouting(false);
 }
 
 void NavigationController::onPositionUpdated(const Position &position) {
@@ -68,6 +85,7 @@ void NavigationController::onRouteChanged() {
         return;
     }
     m_tracker.setRoute(route);
+    m_offRouteTimer.invalidate();
     updateProgress(m_locationProvider->position());
 }
 
@@ -122,6 +140,42 @@ void NavigationController::updateProgress(const Position &position) {
         m_remainingPath.append(QVariant::fromValue(route.shape.at(i)));
 
     emit progressChanged();
+
+    checkOffRoute(position, progress);
+}
+
+// Requests a new route from the current position once it has been away from
+// the route for a while
+void NavigationController::checkOffRoute(const Position &position,
+                                         const RouteTracker::Progress &progress) {
+    if (m_arrived || progress.distanceFromRoute <= OffRouteDistance) {
+        m_offRouteTimer.invalidate();
+        return;
+    }
+
+    if (!m_offRouteTimer.isValid()) {
+        m_offRouteTimer.start();
+        return;
+    }
+    if (m_offRouteTimer.elapsed() < OffRouteDelayMs)
+        return;
+    if (m_rerouting || m_routingService->busy())
+        return;
+    if (m_lastReroute.isValid() && m_lastReroute.elapsed() < RerouteCooldownMs)
+        return;
+
+    m_lastReroute.start();
+    setRerouting(true);
+    m_routingService->calculateRoute(position.coordinate(),
+                                     m_routingService->destination(),
+                                     position.hasHeading ? position.heading : -1.0);
+}
+
+void NavigationController::setRerouting(bool rerouting) {
+    if (m_rerouting == rerouting)
+        return;
+    m_rerouting = rerouting;
+    emit reroutingChanged();
 }
 
 void NavigationController::setNavigating(bool navigating) {

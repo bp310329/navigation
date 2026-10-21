@@ -92,6 +92,7 @@ ApplicationWindow {
         distanceToManeuver: window.controller.distanceToManeuver
         instruction: window.controller.instruction
         thenManeuverType: window.controller.thenManeuverType
+        rerouting: window.controller.rerouting
     }
 
     TripSummary {

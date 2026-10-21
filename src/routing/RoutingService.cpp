@@ -19,6 +19,10 @@ const Route &RoutingService::route() const {
     return m_route;
 }
 
+QGeoCoordinate RoutingService::destination() const {
+    return m_destination;
+}
+
 QVariantList RoutingService::path() const {
     return m_path;
 }
@@ -32,7 +36,8 @@ QString RoutingService::errorString() const {
 }
 
 void RoutingService::calculateRoute(const QGeoCoordinate &from,
-                                    const QGeoCoordinate &to) {
+                                    const QGeoCoordinate &to,
+                                    double heading) {
     if (!from.isValid() || !to.isValid()) {
         setErrorString(tr("Invalid start or destination"));
         return;
@@ -41,9 +46,17 @@ void RoutingService::calculateRoute(const QGeoCoordinate &from,
     // Only the newest request matters
     abortPendingRequest();
 
+    m_destination = to;
+
+    QJsonObject start { { "lat", from.latitude() }, { "lon", from.longitude() } };
+    if (heading >= 0.0) {
+        start.insert("heading", qRound(heading) % 360);
+        start.insert("heading_tolerance", 45);
+    }
+
     const QJsonObject body {
         { "locations", QJsonArray {
-            QJsonObject { { "lat", from.latitude() }, { "lon", from.longitude() } },
+            start,
             QJsonObject { { "lat", to.latitude() }, { "lon", to.longitude() } },
         } },
         { "costing", "auto" },

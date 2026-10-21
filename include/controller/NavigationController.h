@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
@@ -20,6 +21,8 @@ class NavigationController : public QObject {
 
     Q_PROPERTY(bool navigating READ navigating NOTIFY navigatingChanged)
     Q_PROPERTY(bool arrived READ arrived NOTIFY progressChanged)
+    // A new route is being calculated after leaving the current one
+    Q_PROPERTY(bool rerouting READ rerouting NOTIFY reroutingChanged)
 
     // Next maneuver: kind for the icon ("left", "right", "slight-right",
     // "roundabout", "arrive", ...), instruction text and distance to it
@@ -44,6 +47,7 @@ public:
 
     bool navigating() const;
     bool arrived() const;
+    bool rerouting() const;
     QString maneuverType() const;
     QString instruction() const;
     double distanceToManeuver() const;
@@ -61,12 +65,15 @@ public:
 signals:
     void navigatingChanged(bool navigating);
     void progressChanged();
+    void reroutingChanged();
 
 private:
     void onPositionUpdated(const Position &position);
     void onRouteChanged();
     void updateProgress(const Position &position);
     void setNavigating(bool navigating);
+    void checkOffRoute(const Position &position, const RouteTracker::Progress &progress);
+    void setRerouting(bool rerouting);
 
     static QString maneuverKind(int valhallaType);
 
@@ -76,6 +83,9 @@ private:
 
     bool m_navigating = false;
     bool m_arrived = false;
+    bool m_rerouting = false;
+    QElapsedTimer m_offRouteTimer;  // running while the position is off the route
+    QElapsedTimer m_lastReroute;
     QString m_maneuverType;
     QString m_instruction;
     double m_distanceToManeuver = 0.0;

@@ -15,6 +15,8 @@ Rectangle {
     property real distanceToManeuver: 0 // meters
     property string instruction
     property string thenManeuverType // empty = no "Then" strip
+    // Shown instead of the maneuver while a new route is calculated
+    property bool rerouting: false
 
     implicitHeight: content.implicitHeight
     radius: Theme.cardRadius
@@ -73,9 +75,9 @@ Rectangle {
             spacing: 22
 
             Icon {
-                path: root.iconFor(root.maneuverType)
+                path: root.rerouting ? Icons.directions : root.iconFor(root.maneuverType)
                 size: Theme.iconManeuver
-                rotation: root.rotationFor(root.maneuverType)
+                rotation: root.rerouting ? 0 : root.rotationFor(root.maneuverType)
                 color: Theme.textOnAccent
             }
 
@@ -84,7 +86,8 @@ Rectangle {
                 spacing: 2
 
                 Text {
-                    text: root.formatDistance(root.distanceToManeuver)
+                    text: root.rerouting ? qsTr("Rerouting…")
+                                         : root.formatDistance(root.distanceToManeuver)
                     color: Theme.textOnAccent
                     font.pixelSize: Theme.fontDisplay
                     font.weight: Font.Bold
@@ -92,7 +95,8 @@ Rectangle {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.instruction
+                    text: root.rerouting ? qsTr("Calculating a new route from your position")
+                                         : root.instruction
                     color: Theme.textOnAccent
                     font.pixelSize: Theme.fontTitle
                     wrapMode: Text.WordWrap
@@ -104,7 +108,7 @@ Rectangle {
 
         // "Then <arrow>" strip for the maneuver after the next one
         Rectangle {
-            visible: root.thenManeuverType.length > 0
+            visible: !root.rerouting && root.thenManeuverType.length > 0
             Layout.fillWidth: true
             implicitHeight: 56
             color: Theme.maneuverSecondary
