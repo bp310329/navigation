@@ -15,6 +15,10 @@ DummyPositionSource::DummyPositionSource(const QGeoCoordinate &coordinate,
     connect(&m_timer, &QTimer::timeout, this, &DummyPositionSource::emitPosition);
 }
 
+void DummyPositionSource::setCoordinate(const QGeoCoordinate &coordinate) {
+    m_coordinate = coordinate;
+}
+
 void DummyPositionSource::setUpdateInterval(int msec) {
     QGeoPositionInfoSource::setUpdateInterval(msec);
     m_timer.setInterval(msec > 0 ? qMax(msec, MinimumUpdateIntervalMs)

@@ -27,6 +27,17 @@ Item {
     // Calculated route geometry, bound from RoutingService by the parent
     property var routePath: []
 
+    // Turn-by-turn guidance, bound from NavigationController by the parent.
+    // While navigating the map follows the position rotated to `heading`,
+    // and the traveled part of the route is drawn in gray.
+    property bool navigating: false
+    property real heading: 0
+    property var traveledPath: []
+    property var remainingPath: []
+
+    readonly property real navigationZoom: 17
+    readonly property real navigationTilt: 40
+
     function clearDestination() {
         destinationCoordinate = QtPositioning.coordinate()
     }
@@ -34,9 +45,26 @@ Item {
     function centerOnCurrentLocation() {
         if (!hasLocation)
             return
-        map.center = currentCoordinate
+        if (navigating)
+            map.zoomLevel = navigationZoom
         centeredOnLocation = true
         followingLocation = true
+        updateCamera()
+    }
+
+    function updateCamera() {
+        if (!hasLocation)
+            return
+        if (!navigating) {
+            map.center = currentCoordinate
+            return
+        }
+        // Driving direction points up, with the position in the lower part
+        // of the screen so more of the road ahead is visible
+        map.bearing = heading
+        map.tilt = navigationTilt
+        map.alignCoordinateToPoint(currentCoordinate,
+                                   Qt.point(width / 2, height - bottomInset - 120))
     }
 
     function fitRoute() {
@@ -53,10 +81,24 @@ Item {
 
     // Center on the first fix, then leave the view to the user
     onHasLocationChanged: if (!centeredOnLocation) centerOnCurrentLocation()
-    onCurrentCoordinateChanged: if (followingLocation && hasLocation) map.center = currentCoordinate
+    onCurrentCoordinateChanged: if (followingLocation) updateCamera()
+    onHeadingChanged: if (followingLocation) updateCamera()
 
-    // Show the whole route once it arrives
-    onRoutePathChanged: if (routePath.length > 1) Qt.callLater(fitRoute)
+    onNavigatingChanged: {
+        if (navigating) {
+            map.zoomLevel = navigationZoom
+            followingLocation = true
+            updateCamera()
+        } else {
+            map.bearing = 0
+            map.tilt = 0
+            if (routePath.length > 1)
+                fitRoute()
+        }
+    }
+
+    // Show the whole route once it arrives (but not when rerouting while navigating)
+    onRoutePathChanged: if (routePath.length > 1 && !navigating) Qt.callLater(fitRoute)
 
     Plugin {
         id: mapPlugin
@@ -78,17 +120,31 @@ Item {
 
         property geoCoordinate startCentroid
 
-        // Calculated route: darker casing under the main line
+        // Already traveled part of the route while navigating
         MapPolyline {
-            visible: root.routePath.length > 1
-            path: root.routePath
+            visible: root.navigating && root.traveledPath.length > 1
+            path: root.traveledPath
+            line.width: 14
+            line.color: Theme.routeTraveledCasing
+        }
+        MapPolyline {
+            visible: root.navigating && root.traveledPath.length > 1
+            path: root.traveledPath
+            line.width: 9
+            line.color: Theme.routeTraveled
+        }
+
+        // Route ahead (the whole route when not navigating): darker casing under the main line
+        MapPolyline {
+            visible: routeLine.visible
+            path: routeLine.path
             line.width: 14
             line.color: Theme.accentPressed
         }
         MapPolyline {
             id: routeLine
-            visible: root.routePath.length > 1
-            path: root.routePath
+            path: root.navigating ? root.remainingPath : root.routePath
+            visible: path.length > 1
             line.width: 9
             line.color: Theme.accent
         }
@@ -117,24 +173,42 @@ Item {
             id: currentLocationMarker
             visible: root.hasLocation
             coordinate: root.currentCoordinate
-            anchorPoint.x: locationHalo.width / 2
-            anchorPoint.y: locationHalo.height / 2
+            anchorPoint.x: locationMarker.width / 2
+            anchorPoint.y: locationMarker.height / 2
 
-            sourceItem: Rectangle {
-                id: locationHalo
+            sourceItem: Item {
+                id: locationMarker
                 width: 72
                 height: 72
-                radius: width / 2
-                color: Qt.alpha(Theme.accent, 0.18)
 
+                // Browsing: dot with a soft halo
                 Rectangle {
-                    anchors.centerIn: parent
-                    width: 32
-                    height: 32
+                    visible: !root.navigating
+                    anchors.fill: parent
                     radius: width / 2
+                    color: Qt.alpha(Theme.accent, 0.18)
+
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 32
+                        height: 32
+                        radius: width / 2
+                        color: Theme.accent
+                        border.color: "white"
+                        border.width: 4
+                    }
+                }
+
+                // Navigating: arrow pointing in the direction of travel
+                Icon {
+                    visible: root.navigating
+                    anchors.centerIn: parent
+                    path: Icons.navigation
+                    size: 64
                     color: Theme.accent
-                    border.color: "white"
-                    border.width: 4
+                    strokeColor: "white"
+                    strokeWidth: 1.5
+                    rotation: root.heading - map.bearing
                 }
             }
         }
@@ -142,6 +216,7 @@ Item {
         // Tap / click to place the destination
         TapHandler {
             id: tap
+            enabled: !root.navigating
             onTapped: (eventPoint) => {
                 root.destinationCoordinate = map.toCoordinate(eventPoint.position, false)
             }

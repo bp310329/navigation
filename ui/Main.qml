@@ -15,9 +15,7 @@ ApplicationWindow {
     required property LocationProvider locationProvider
     required property RoutingService routingService
 
-    // Debug: show the navigation panels without navigating
-    property bool debugNavigationPanels: false
-    readonly property bool navigationVisible: controller.navigating || debugNavigationPanels
+    readonly property bool navigationVisible: controller.navigating
 
     // The bottom card currently on screen
     readonly property Item bottomPanel: navigationVisible ? tripSummary : routePanel
@@ -44,6 +42,11 @@ ApplicationWindow {
         currentCoordinate: window.locationProvider.position.coordinate
         routePath: window.routingService.path
 
+        navigating: window.controller.navigating
+        heading: window.controller.heading
+        traveledPath: window.controller.traveledPath
+        remainingPath: window.controller.remainingPath
+
         // A new destination invalidates the old route
         onDestinationCoordinateChanged: window.routingService.clearRoute()
     }
@@ -68,16 +71,14 @@ ApplicationWindow {
         onStartNavigationClicked: {
             // TODO: start navigation with the route received over Bluetooth
         }
-        onStartRouteClicked: {
-            // TODO: start navigation along the route created on the map
-        }
+        onStartRouteClicked: window.controller.startNavigation()
         onCreateRouteClicked: window.routingService.calculateRoute(
                                   mapView.currentCoordinate,
                                   mapView.destinationCoordinate)
         onClearClicked: mapView.clearDestination()
     }
 
-    // --- Navigating (placeholder data until NavigationController provides it) ---
+    // --- Navigating ---
 
     ManeuverBanner {
         id: maneuverBanner
@@ -87,10 +88,10 @@ ApplicationWindow {
         anchors.margins: Theme.spacing
         width: Math.min(parent.width - 2 * Theme.spacing, 560)
 
-        maneuverType: "right"
-        distanceToManeuver: 300
-        instruction: qsTr("Turn right onto Mikołowska")
-        thenManeuverType: "left"
+        maneuverType: window.controller.maneuverType
+        distanceToManeuver: window.controller.distanceToManeuver
+        instruction: window.controller.instruction
+        thenManeuverType: window.controller.thenManeuverType
     }
 
     TripSummary {
@@ -101,13 +102,10 @@ ApplicationWindow {
         anchors.bottomMargin: Theme.spacing
         width: Math.min(parent.width - 2 * Theme.spacing, 640)
 
-        remainingDistance: 5700
-        remainingSeconds: 12 * 60
+        remainingDistance: window.controller.remainingDistance
+        remainingSeconds: window.controller.remainingSeconds
 
-        onEndClicked: {
-            window.controller.stopNavigation()
-            window.debugNavigationPanels = false
-        }
+        onEndClicked: window.controller.stopNavigation()
     }
 
     // --- Floating map buttons ---
@@ -120,15 +118,5 @@ ApplicationWindow {
         iconColor: mapView.followingLocation ? Theme.accent : Theme.textSecondary
         enabled: mapView.hasLocation
         onClicked: mapView.centerOnCurrentLocation()
-    }
-
-    // Debug only: toggles the navigation panels
-    FloatingButton {
-        anchors.top: statusBar.bottom
-        anchors.right: parent.right
-        anchors.margins: Theme.spacing
-        iconPath: Icons.bug
-        iconColor: window.debugNavigationPanels ? Theme.danger : Theme.textSecondary
-        onClicked: window.debugNavigationPanels = !window.debugNavigationPanels
     }
 }

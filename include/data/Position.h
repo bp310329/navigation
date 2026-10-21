@@ -11,6 +11,8 @@ struct Position {
     Q_PROPERTY(double latitude MEMBER latitude)
     Q_PROPERTY(double longitude MEMBER longitude)
     Q_PROPERTY(double speed MEMBER speed)
+    Q_PROPERTY(double heading MEMBER heading)
+    Q_PROPERTY(bool hasHeading MEMBER hasHeading)
     Q_PROPERTY(bool valid MEMBER valid)
     Q_PROPERTY(QGeoCoordinate coordinate READ coordinate)
 
@@ -18,6 +20,8 @@ public:
     double latitude = 0.0;
     double longitude = 0.0;
     double speed = 0.0;
+    double heading = 0.0;    // degrees clockwise from north
+    bool hasHeading = false; // the source reported a direction of travel
     bool valid = false;
 
     QGeoCoordinate coordinate() const {

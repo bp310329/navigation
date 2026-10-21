@@ -15,6 +15,10 @@ RoutingService::RoutingService(const QUrl &serverUrl, QObject *parent)
       m_serverUrl(serverUrl) {
 }
 
+const Route &RoutingService::route() const {
+    return m_route;
+}
+
 QVariantList RoutingService::path() const {
     return m_path;
 }
@@ -43,8 +47,7 @@ void RoutingService::calculateRoute(const QGeoCoordinate &from,
             QJsonObject { { "lat", to.latitude() }, { "lon", to.longitude() } },
         } },
         { "costing", "auto" },
-        // Turn-by-turn instructions are not needed yet, only the geometry
-        { "directions_type", "none" },
+        { "units", "kilometers" },
     };
 
     QUrl url = m_serverUrl;
@@ -64,7 +67,7 @@ void RoutingService::calculateRoute(const QGeoCoordinate &from,
 
 void RoutingService::clearRoute() {
     abortPendingRequest();
-    setPath({});
+    setRoute({});
     setErrorString({});
 }
 
@@ -95,25 +98,52 @@ void RoutingService::onReplyFinished(QNetworkReply *reply) {
         return;
     }
 
-    QVariantList path;
-    const QJsonArray legs = json.value("trip").toObject().value("legs").toArray();
-    for (const QJsonValue &leg : legs) {
-        const QByteArray shape = leg.toObject().value("shape").toString().toLatin1();
-        for (const QGeoCoordinate &coordinate : decodePolyline(shape))
-            path.append(QVariant::fromValue(coordinate));
-    }
-
-    if (path.isEmpty()) {
+    const Route route = parseRoute(json.value("trip").toObject());
+    if (!route.isValid()) {
         setErrorString(tr("Valhalla returned no route"));
         return;
     }
 
-    setPath(path);
+    setRoute(route);
 }
 
-void RoutingService::setPath(const QVariantList &path) {
-    m_path = path;
-    emit pathChanged();
+void RoutingService::setRoute(const Route &route) {
+    m_route = route;
+    m_path.clear();
+    m_path.reserve(route.shape.size());
+    for (const QGeoCoordinate &coordinate : route.shape)
+        m_path.append(QVariant::fromValue(coordinate));
+    emit routeChanged();
+}
+
+// Joins all legs into one shape; maneuver shape indices are shifted so they
+// refer to the joined shape.
+Route RoutingService::parseRoute(const QJsonObject &trip) {
+    Route route;
+    const QJsonArray legs = trip.value("legs").toArray();
+    for (const QJsonValue &legValue : legs) {
+        const QJsonObject leg = legValue.toObject();
+        const int offset = route.shape.size();
+        route.shape.append(decodePolyline(leg.value("shape").toString().toLatin1()));
+
+        const QJsonArray maneuvers = leg.value("maneuvers").toArray();
+        for (const QJsonValue &maneuverValue : maneuvers) {
+            const QJsonObject json = maneuverValue.toObject();
+            Maneuver maneuver;
+            maneuver.type = json.value("type").toInt();
+            maneuver.instruction = json.value("instruction").toString();
+            maneuver.beginShapeIndex = offset + json.value("begin_shape_index").toInt();
+            maneuver.endShapeIndex = offset + json.value("end_shape_index").toInt();
+            maneuver.length = json.value("length").toDouble() * 1000.0;
+            maneuver.time = json.value("time").toDouble();
+            route.maneuvers.append(maneuver);
+        }
+    }
+
+    const QJsonObject summary = trip.value("summary").toObject();
+    route.length = summary.value("length").toDouble() * 1000.0;
+    route.time = summary.value("time").toDouble();
+    return route;
 }
 
 void RoutingService::setBusy(bool busy) {

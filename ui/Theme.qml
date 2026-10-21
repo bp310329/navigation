@@ -21,6 +21,8 @@ QtObject {
     readonly property color maneuver: "#0d652d"
     readonly property color maneuverSecondary: "#0a5224"
     readonly property color eta: "#188038"
+    readonly property color routeTraveled: "#a8adb3"
+    readonly property color routeTraveledCasing: "#80868b"
 
     // Surfaces
     readonly property color chrome: "#15181d"

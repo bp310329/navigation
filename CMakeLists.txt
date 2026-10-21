@@ -26,6 +26,7 @@ qt_add_executable(appnavigation
     src/data/DestinationParser.cpp
     src/location/LocationProvider.cpp
     src/location/DummyPositionSource.cpp
+    src/navigation/RouteTracker.cpp
     src/routing/RoutingService.cpp
 
     include/bluetooth/BluetoothManager.h
@@ -35,6 +36,8 @@ qt_add_executable(appnavigation
     include/data/Position.h
     include/location/LocationProvider.h
     include/location/DummyPositionSource.h
+    include/navigation/RouteTracker.h
+    include/routing/Route.h
     include/routing/RoutingService.h
 )
 

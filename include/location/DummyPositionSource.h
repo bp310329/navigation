@@ -13,6 +13,9 @@ public:
     explicit DummyPositionSource(const QGeoCoordinate &coordinate,
                                  QObject *parent = nullptr);
 
+    // Moves the reported position, e.g. to simulate driving
+    void setCoordinate(const QGeoCoordinate &coordinate);
+
     void setUpdateInterval(int msec) override;
     QGeoPositionInfo lastKnownPosition(
         bool fromSatellitePositioningMethodsOnly = false) const override;

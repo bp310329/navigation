@@ -8,8 +8,10 @@ import navigation
 Rectangle {
     id: root
 
-    // Maneuver kinds: "left", "right", "straight", "arrive"
-    property string maneuverType: "right"
+    // Maneuver kinds from NavigationController: "straight", "slight-left/right",
+    // "left/right", "sharp-left/right", "uturn-left/right", "roundabout",
+    // "depart", "arrive"
+    property string maneuverType: "straight"
     property real distanceToManeuver: 0 // meters
     property string instruction
     property string thenManeuverType // empty = no "Then" strip
@@ -29,10 +31,25 @@ Rectangle {
 
     function iconFor(type) {
         switch (type) {
-        case "left": return Icons.turnLeft
-        case "right": return Icons.turnRight
+        case "left": case "sharp-left": return Icons.turnLeft
+        case "right": case "sharp-right": return Icons.turnRight
+        case "uturn-left": return Icons.uturnLeft
+        case "uturn-right": return Icons.uturnRight
+        case "roundabout": return Icons.roundabout
+        case "depart": return Icons.navigation
         case "arrive": return Icons.place
         default: return Icons.straight
+        }
+    }
+
+    // Slight and sharp turns reuse the straight and turn arrows, tilted
+    function rotationFor(type) {
+        switch (type) {
+        case "slight-left": return -45
+        case "slight-right": return 45
+        case "sharp-left": return -45
+        case "sharp-right": return 45
+        default: return 0
         }
     }
 
@@ -58,6 +75,7 @@ Rectangle {
             Icon {
                 path: root.iconFor(root.maneuverType)
                 size: Theme.iconManeuver
+                rotation: root.rotationFor(root.maneuverType)
                 color: Theme.textOnAccent
             }
 
@@ -111,6 +129,7 @@ Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     path: root.iconFor(root.thenManeuverType)
                     size: Theme.iconMedium
+                    rotation: root.rotationFor(root.thenManeuverType)
                     color: Theme.textOnAccent
                 }
             }

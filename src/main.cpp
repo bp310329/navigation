@@ -20,12 +20,11 @@ int main(int argc, char *argv[])
     DummyPositionSource positionSource(QGeoCoordinate(50.2312, 18.9688));
 
     LocationProvider locationProvider(&positionSource);
-    NavigationController controller(
-        &locationProvider
-    );
 
     // Valhalla routing server (running locally in WSL)
     RoutingService routingService(QUrl("http://172.18.77.37:8002"));
+
+    NavigationController controller(&locationProvider, &routingService);
 
     engine.setInitialProperties({
         { "controller", QVariant::fromValue(&controller) },

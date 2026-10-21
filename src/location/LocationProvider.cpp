@@ -40,6 +40,10 @@ void LocationProvider::onPositionUpdated(const QGeoPositionInfo &info) {
     position.longitude = info.coordinate().longitude();
     if (info.hasAttribute(QGeoPositionInfo::GroundSpeed))
         position.speed = info.attribute(QGeoPositionInfo::GroundSpeed);
+    if (info.hasAttribute(QGeoPositionInfo::Direction)) {
+        position.heading = info.attribute(QGeoPositionInfo::Direction);
+        position.hasHeading = true;
+    }
     position.valid = info.isValid();
 
     m_position = position;
