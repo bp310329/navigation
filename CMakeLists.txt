@@ -38,6 +38,10 @@ qt_add_executable(appnavigation
     include/routing/RoutingService.h
 )
 
+set_source_files_properties(ui/Theme.qml ui/Icons.qml
+    PROPERTIES QT_QML_SINGLETON_TYPE TRUE
+)
+
 qt_add_qml_module(appnavigation
     URI navigation
     VERSION 1.0
@@ -45,7 +49,15 @@ qt_add_qml_module(appnavigation
         QtPositioning
     QML_FILES
         ui/Main.qml
+        ui/Theme.qml
+        ui/Icons.qml
+        ui/components/BatteryIndicator.qml
+        ui/components/FloatingButton.qml
+        ui/components/Icon.qml
         ui/components/MapView.qml
+        ui/components/PillButton.qml
+        ui/components/RoutePanel.qml
+        ui/components/StatusBar.qml
     RESOURCES
         assets/mapExample.png
 )

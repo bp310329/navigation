@@ -1,6 +1,7 @@
 import QtQuick
 import QtLocation
 import QtPositioning
+import navigation
 
 Item {
     id: root
@@ -12,6 +13,12 @@ Item {
 
     readonly property bool hasLocation: locationAvailable && currentCoordinate.isValid
     property bool centeredOnLocation: false
+
+    // Map keeps the current location centered until the user moves it
+    property bool followingLocation: false
+
+    // Height covered by floating UI at the bottom, kept free when fitting the route
+    property real bottomInset: 0
 
     // Destination placed by tapping the map
     property geoCoordinate destinationCoordinate
@@ -29,13 +36,27 @@ Item {
             return
         map.center = currentCoordinate
         centeredOnLocation = true
+        followingLocation = true
+    }
+
+    function fitRoute() {
+        followingLocation = false
+        map.fitViewportToMapItems([routeLine])
+
+        // Fit the route into the free area between the pin (top) and the
+        // bottom panel instead of the whole map, plus a small margin
+        const topInset = destinationPin.height
+        const freeHeight = Math.max(1, height - bottomInset - topInset)
+        map.zoomLevel -= Math.log2(height / freeHeight) + 0.2
+        map.pan(0, (bottomInset - topInset) / 2)
     }
 
     // Center on the first fix, then leave the view to the user
     onHasLocationChanged: if (!centeredOnLocation) centerOnCurrentLocation()
+    onCurrentCoordinateChanged: if (followingLocation && hasLocation) map.center = currentCoordinate
 
     // Show the whole route once it arrives
-    onRoutePathChanged: if (routePath.length > 1) Qt.callLater(map.fitViewportToMapItems, [routeLine])
+    onRoutePathChanged: if (routePath.length > 1) Qt.callLater(fitRoute)
 
     Plugin {
         id: mapPlugin
@@ -57,13 +78,19 @@ Item {
 
         property geoCoordinate startCentroid
 
-        // Calculated route
+        // Calculated route: darker casing under the main line
+        MapPolyline {
+            visible: root.routePath.length > 1
+            path: root.routePath
+            line.width: 10
+            line.color: Theme.accentPressed
+        }
         MapPolyline {
             id: routeLine
             visible: root.routePath.length > 1
             path: root.routePath
             line.width: 6
-            line.color: "#1a73e8"
+            line.color: Theme.accent
         }
 
         // Destination marker
@@ -72,30 +99,16 @@ Item {
             visible: root.hasDestination
             coordinate: root.destinationCoordinate
             anchorPoint.x: destinationPin.width / 2
-            anchorPoint.y: destinationPin.height
+            // Tip of the pin is at y = 22 of the 24x24 icon
+            anchorPoint.y: destinationPin.height * 22 / 24
 
-            sourceItem: Item {
+            sourceItem: Icon {
                 id: destinationPin
-                width: 24
-                height: 34
-
-                Rectangle {
-                    x: 0
-                    y: 0
-                    width: 24
-                    height: 24
-                    radius: width / 2
-                    color: "#d93025"
-                    border.color: "white"
-                    border.width: 3
-                }
-                Rectangle {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    width: 3
-                    height: 12
-                    color: "#d93025"
-                }
+                path: Icons.place
+                size: 48
+                color: Theme.danger
+                strokeColor: "white"
+                strokeWidth: 1.2
             }
         }
 
@@ -104,17 +117,25 @@ Item {
             id: currentLocationMarker
             visible: root.hasLocation
             coordinate: root.currentCoordinate
-            anchorPoint.x: locationDot.width / 2
-            anchorPoint.y: locationDot.height / 2
+            anchorPoint.x: locationHalo.width / 2
+            anchorPoint.y: locationHalo.height / 2
 
             sourceItem: Rectangle {
-                id: locationDot
-                width: 20
-                height: 20
+                id: locationHalo
+                width: 48
+                height: 48
                 radius: width / 2
-                color: "#1a73e8"
-                border.color: "white"
-                border.width: 3
+                color: Qt.alpha(Theme.accent, 0.18)
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 22
+                    height: 22
+                    radius: width / 2
+                    color: Theme.accent
+                    border.color: "white"
+                    border.width: 3
+                }
             }
         }
 
@@ -130,6 +151,7 @@ Item {
         DragHandler {
             id: drag
             target: null
+            onActiveChanged: if (active) root.followingLocation = false
             onTranslationChanged: (delta) => map.pan(-delta.x, -delta.y)
         }
 
@@ -153,6 +175,7 @@ Item {
             grabPermissions: PointerHandler.TakeOverForbidden
 
             onActiveChanged: if (active) {
+                root.followingLocation = false
                 map.startCentroid = map.toCoordinate(pinch.centroid.position, false)
             }
             onScaleChanged: (delta) => {
