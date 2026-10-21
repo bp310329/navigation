@@ -4,6 +4,7 @@
 
 #include "controller/NavigationController.h"
 #include "location/DummyPositionSource.h"
+#include "location/KeyboardDriver.h"
 #include "location/LocationProvider.h"
 #include "routing/RoutingService.h"
 
@@ -25,6 +26,16 @@ int main(int argc, char *argv[])
     RoutingService routingService(QUrl("http://172.18.77.37:8002"));
 
     NavigationController controller(&locationProvider, &routingService);
+
+    // Testing: drive the dummy position with WASD / arrow keys (Shift = faster).
+    // When navigation starts, the simulated car is turned to face along the route.
+    KeyboardDriver keyboardDriver(&positionSource);
+    app.installEventFilter(&keyboardDriver);
+    QObject::connect(&controller, &NavigationController::navigatingChanged,
+                     &keyboardDriver, [&](bool navigating) {
+        if (navigating)
+            keyboardDriver.setHeading(controller.heading());
+    });
 
     engine.setInitialProperties({
         { "controller", QVariant::fromValue(&controller) },

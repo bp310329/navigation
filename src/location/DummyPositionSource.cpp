@@ -15,8 +15,21 @@ DummyPositionSource::DummyPositionSource(const QGeoCoordinate &coordinate,
     connect(&m_timer, &QTimer::timeout, this, &DummyPositionSource::emitPosition);
 }
 
+QGeoCoordinate DummyPositionSource::coordinate() const {
+    return m_coordinate;
+}
+
 void DummyPositionSource::setCoordinate(const QGeoCoordinate &coordinate) {
     m_coordinate = coordinate;
+}
+
+void DummyPositionSource::setDirection(double degrees) {
+    m_direction = degrees;
+    m_hasDirection = true;
+}
+
+void DummyPositionSource::setGroundSpeed(double metersPerSecond) {
+    m_groundSpeed = metersPerSecond;
 }
 
 void DummyPositionSource::setUpdateInterval(int msec) {
@@ -61,7 +74,9 @@ void DummyPositionSource::requestUpdate(int) {
 
 void DummyPositionSource::emitPosition() {
     QGeoPositionInfo info(m_coordinate, QDateTime::currentDateTimeUtc());
-    info.setAttribute(QGeoPositionInfo::GroundSpeed, 0.0);
+    info.setAttribute(QGeoPositionInfo::GroundSpeed, m_groundSpeed);
+    if (m_hasDirection)
+        info.setAttribute(QGeoPositionInfo::Direction, m_direction);
 
     m_lastPosition = info;
     emit positionUpdated(info);

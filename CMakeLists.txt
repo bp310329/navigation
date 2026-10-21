@@ -26,6 +26,7 @@ qt_add_executable(appnavigation
     src/data/DestinationParser.cpp
     src/location/LocationProvider.cpp
     src/location/DummyPositionSource.cpp
+    src/location/KeyboardDriver.cpp
     src/navigation/RouteTracker.cpp
     src/routing/RoutingService.cpp
 
@@ -36,6 +37,7 @@ qt_add_executable(appnavigation
     include/data/Position.h
     include/location/LocationProvider.h
     include/location/DummyPositionSource.h
+    include/location/KeyboardDriver.h
     include/navigation/RouteTracker.h
     include/routing/Route.h
     include/routing/RoutingService.h

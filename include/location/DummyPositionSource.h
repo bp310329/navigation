@@ -14,7 +14,12 @@ public:
                                  QObject *parent = nullptr);
 
     // Moves the reported position, e.g. to simulate driving
+    QGeoCoordinate coordinate() const;
     void setCoordinate(const QGeoCoordinate &coordinate);
+
+    // Direction of travel (degrees) and speed (m/s) reported with each position
+    void setDirection(double degrees);
+    void setGroundSpeed(double metersPerSecond);
 
     void setUpdateInterval(int msec) override;
     QGeoPositionInfo lastKnownPosition(
@@ -32,6 +37,9 @@ private:
     void emitPosition();
 
     QGeoCoordinate m_coordinate;
+    double m_direction = 0.0;
+    bool m_hasDirection = false;
+    double m_groundSpeed = 0.0;
     QGeoPositionInfo m_lastPosition;
     QTimer m_timer;
 };
