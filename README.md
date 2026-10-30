@@ -1,0 +1,2 @@
+Software of navigation device based on Raspberry Pi 4. Developing a C++ application using Qt Quick/QML, integrating MapLibre Native Qt for map rendering and Valhalla for route calculation based on OpenStreetMap data. 
+The project also involves working with Linux, CMake, native ARM64 library compilation, and hardware-software integration. Ultimately this projects will consists of this device and mobile app to create routes. [WIP]
