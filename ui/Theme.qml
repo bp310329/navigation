@@ -42,20 +42,20 @@ QtObject {
     readonly property int statusBarHeight: 52
     readonly property int touchTarget: 80
     readonly property int spacing: 18
-    readonly property int cardPadding: 24
+    readonly property int cardPadding: 18
     readonly property int cardRadius: 28
 
     // Icons
     readonly property int iconSmall: 28
     readonly property int iconMedium: 34
     readonly property int iconLarge: 40
-    readonly property int iconManeuver: 76
+    readonly property int iconManeuver: 60
 
     // Typography
     readonly property int fontSmall: 20
     readonly property int fontBody: 22
     readonly property int fontButton: 26
     readonly property int fontTitle: 30
-    readonly property int fontHeadline: 36
-    readonly property int fontDisplay: 48
+    readonly property int fontHeadline: 32
+    readonly property int fontDisplay: 40
 }

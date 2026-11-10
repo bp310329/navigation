@@ -36,36 +36,36 @@ Card {
         id: content
         anchors.fill: parent
         anchors.margins: Theme.cardPadding
-        spacing: 20
+        spacing: 14
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 18
+            spacing: 16
 
             // Leading icon in a tinted circle
             Rectangle {
-                implicitWidth: 64
-                implicitHeight: 64
+                implicitWidth: 52
+                implicitHeight: 52
                 radius: width / 2
                 color: root.hasError ? Theme.dangerSoft : Theme.accentSoft
 
                 Icon {
                     anchors.centerIn: parent
                     path: root.hasDestination ? Icons.place : Icons.bluetooth
-                    size: Theme.iconMedium
+                    size: Theme.iconSmall
                     color: root.hasError ? Theme.danger : Theme.accent
                 }
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
-                spacing: 4
+                spacing: 2
 
                 Text {
                     Layout.fillWidth: true
                     text: root.hasDestination ? qsTr("Selected destination") : qsTr("Where to?")
                     color: Theme.textPrimary
-                    font.pixelSize: Theme.fontTitle
+                    font.pixelSize: Theme.fontButton
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }

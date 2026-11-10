@@ -86,7 +86,7 @@ ApplicationWindow {
         anchors.top: statusBar.bottom
         anchors.left: parent.left
         anchors.margins: Theme.spacing
-        width: Math.min(parent.width - 2 * Theme.spacing, 560)
+        width: Math.min(parent.width - 2 * Theme.spacing, 480)
 
         maneuverType: window.controller.maneuverType
         distanceToManeuver: window.controller.distanceToManeuver
@@ -101,7 +101,7 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottomMargin: Theme.spacing
-        width: Math.min(parent.width - 2 * Theme.spacing, 640)
+        width: Math.min(parent.width - 2 * Theme.spacing, 560)
 
         remainingDistance: window.controller.remainingDistance
         remainingSeconds: window.controller.remainingSeconds

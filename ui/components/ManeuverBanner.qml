@@ -72,7 +72,7 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Layout.margins: Theme.cardPadding
-            spacing: 22
+            spacing: 16
 
             Icon {
                 path: root.rerouting ? Icons.directions : root.iconFor(root.maneuverType)
@@ -98,7 +98,7 @@ Rectangle {
                     text: root.rerouting ? qsTr("Calculating a new route from your position")
                                          : root.instruction
                     color: Theme.textOnAccent
-                    font.pixelSize: Theme.fontTitle
+                    font.pixelSize: Theme.fontButton
                     wrapMode: Text.WordWrap
                     maximumLineCount: 2
                     elide: Text.ElideRight
@@ -110,7 +110,7 @@ Rectangle {
         Rectangle {
             visible: !root.rerouting && root.thenManeuverType.length > 0
             Layout.fillWidth: true
-            implicitHeight: 56
+            implicitHeight: 44
             color: Theme.maneuverSecondary
             bottomLeftRadius: root.radius
             bottomRightRadius: root.radius
@@ -132,7 +132,7 @@ Rectangle {
                 Icon {
                     anchors.verticalCenter: parent.verticalCenter
                     path: root.iconFor(root.thenManeuverType)
-                    size: Theme.iconMedium
+                    size: Theme.iconSmall
                     rotation: root.rotationFor(root.thenManeuverType)
                     color: Theme.textOnAccent
                 }
