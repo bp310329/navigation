@@ -4,6 +4,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
 
+#include "bluetooth/BluetoothManager.h"
 #include "controller/NavigationController.h"
 #include "controller/TripReceiver.h"
 #include "location/DummyPositionSource.h"
@@ -43,9 +44,17 @@ int main(int argc, char *argv[])
 
     NavigationController controller(&locationProvider, &routingService);
 
-    // Routes sent from the phone. TODO: feed it from Bluetooth:
-    //   connect(&bluetooth, &BluetoothManager::dataReceived, &tripReceiver, &TripReceiver::receive);
+    // Routes sent from the phone over Bluetooth. Every message is answered
+    // with an acknowledgement, so the phone knows whether the route was accepted.
     TripReceiver tripReceiver(&locationProvider, &routingService);
+    BluetoothManager bluetooth;
+    QObject::connect(&bluetooth, &BluetoothManager::messageReceived,
+                     &tripReceiver, [&](const QByteArray &message) {
+        if (tripReceiver.receive(message))
+            bluetooth.sendMessage(R"({"type":"ack","ok":true})");
+        else
+            bluetooth.sendMessage(R"({"type":"ack","ok":false,"error":"invalid route"})");
+    });
 
     // Testing: drive the dummy position with WASD / arrow keys (Shift = faster).
     // When navigation starts, the simulated car is turned to face along the route.
@@ -62,6 +71,7 @@ int main(int argc, char *argv[])
         { "locationProvider", QVariant::fromValue(&locationProvider) },
         { "routingService", QVariant::fromValue(&routingService) },
         { "tripReceiver", QVariant::fromValue(&tripReceiver) },
+        { "bluetooth", QVariant::fromValue(&bluetooth) },
     });
 
     locationProvider.start();

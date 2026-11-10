@@ -17,6 +17,8 @@ Card {
     property bool canCreateRoute: true
     // Stops of the calculated route: [{ name, coordinate, reached }]
     property var stops: []
+    // Name of the connected phone, empty when not connected
+    property string phoneName
 
     signal startRouteClicked()
     signal createRouteClicked()
@@ -93,7 +95,9 @@ Card {
                         : root.hasError ? root.errorString
                         : root.hasRoute ? root.routeSummary()
                         : root.hasDestination ? root.formatCoordinate(root.destinationCoordinate)
-                        : qsTr("Send a route from your phone or tap the map")
+                        : root.phoneName.length > 0
+                          ? qsTr("Waiting for a route from %1, or tap the map").arg(root.phoneName)
+                        : qsTr("Connect your phone or tap the map")
                     color: root.hasError ? Theme.danger : Theme.textSecondary
                     font.pixelSize: Theme.fontBody
                     elide: Text.ElideRight

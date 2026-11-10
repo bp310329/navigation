@@ -24,6 +24,18 @@ To use a different Valhalla server without rebuilding, set the `NAV_VALHALLA_URL
 
 ## Routes from the phone
 
+### Bluetooth connection
+
+Tap the Bluetooth status in the top-left corner. This opens a list of nearby devices; pick the phone to connect to it.
+
+- The device connects to the phone over Bluetooth Classic (RFCOMM). The phone app must listen for connections on the Serial Port Profile UUID `00001101-0000-1000-8000-00805F9B34FB`.
+- Pair the phone with the device in the system Bluetooth settings first. On Windows, the app can't start pairing itself.
+- Messages in both directions are UTF-8 JSON, one per line, each ending with `
+`.
+- The device answers each message with an acknowledgement: `{"type":"ack","ok":true}`, or `{"type":"ack","ok":false,"error":"invalid route"}` if it can't read the route.
+
+### Route format
+
 The phone sends a route as JSON. The stops are in driving order, and the last one is the final destination. `name` is optional. A route can have at most 19 stops.
 
 ```json

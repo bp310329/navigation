@@ -15,6 +15,7 @@ ApplicationWindow {
     required property LocationProvider locationProvider
     required property RoutingService routingService
     required property TripReceiver tripReceiver
+    required property BluetoothManager bluetooth
 
     readonly property bool navigationVisible: controller.navigating
 
@@ -27,6 +28,15 @@ ApplicationWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         z: 1
+
+        bluetoothState: window.bluetooth.state
+        bluetoothDeviceName: window.bluetooth.deviceName
+        onBluetoothClicked: bluetoothDialog.open()
+    }
+
+    BluetoothDialog {
+        id: bluetoothDialog
+        bluetooth: window.bluetooth
     }
 
     MapView {
@@ -55,10 +65,14 @@ ApplicationWindow {
         onDestinationCoordinateChanged: window.routingService.clearRoute()
     }
 
-    // A route from the phone replaces the destination picked on the map
+    // A route from the phone replaces the destination picked on the map;
+    // the connection dialog gets out of the way so the route can be started
     Connections {
         target: window.tripReceiver
-        function onTripReceived() { mapView.clearDestination() }
+        function onTripReceived() {
+            mapView.clearDestination()
+            bluetoothDialog.close()
+        }
     }
 
     // --- Browsing: pick a destination or wait for a route from the phone ---
@@ -78,6 +92,8 @@ ApplicationWindow {
         errorString: window.routingService.errorString
         canCreateRoute: mapView.hasLocation
         stops: window.routingService.stops
+        phoneName: window.bluetooth.state === BluetoothManager.Connected
+                   ? window.bluetooth.deviceName : ""
 
         onStartRouteClicked: window.controller.startNavigation()
         onCreateRouteClicked: window.routingService.calculateRoute(

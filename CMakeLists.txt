@@ -60,6 +60,7 @@ qt_add_qml_module(appnavigation
         ui/Theme.qml
         ui/Icons.qml
         ui/components/BatteryIndicator.qml
+        ui/components/BluetoothDialog.qml
         ui/components/Card.qml
         ui/components/FloatingButton.qml
         ui/components/Icon.qml
@@ -123,6 +124,7 @@ endif()
 target_include_directories(appnavigation PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     # Generated QML type registration includes QML_ELEMENT headers by file name
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/bluetooth"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/controller"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/data"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/location"
