@@ -1,8 +1,11 @@
+#include <QCommandLineParser>
+#include <QFile>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
 
 #include "controller/NavigationController.h"
+#include "controller/TripReceiver.h"
 #include "location/DummyPositionSource.h"
 #include "location/KeyboardDriver.h"
 #include "location/LocationProvider.h"
@@ -14,6 +17,16 @@ int main(int argc, char *argv[])
     QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
 
     QGuiApplication app(argc, argv);
+
+    QCommandLineParser parser;
+    parser.addHelpOption();
+    const QCommandLineOption tripOption(
+        QStringLiteral("trip"),
+        QStringLiteral("Testing: load a route with stops from a JSON file, as if sent from the phone."),
+        QStringLiteral("file"));
+    parser.addOption(tripOption);
+    parser.process(app);
+
     QQmlApplicationEngine engine;
 
     // Dummy source until real positioning is available. Replace with e.g.
@@ -30,6 +43,10 @@ int main(int argc, char *argv[])
 
     NavigationController controller(&locationProvider, &routingService);
 
+    // Routes sent from the phone. TODO: feed it from Bluetooth:
+    //   connect(&bluetooth, &BluetoothManager::dataReceived, &tripReceiver, &TripReceiver::receive);
+    TripReceiver tripReceiver(&locationProvider, &routingService);
+
     // Testing: drive the dummy position with WASD / arrow keys (Shift = faster).
     // When navigation starts, the simulated car is turned to face along the route.
     KeyboardDriver keyboardDriver(&positionSource);
@@ -44,11 +61,20 @@ int main(int argc, char *argv[])
         { "controller", QVariant::fromValue(&controller) },
         { "locationProvider", QVariant::fromValue(&locationProvider) },
         { "routingService", QVariant::fromValue(&routingService) },
+        { "tripReceiver", QVariant::fromValue(&tripReceiver) },
     });
 
     locationProvider.start();
 
     engine.loadFromModule("navigation", "Main");
+
+    if (parser.isSet(tripOption)) {
+        QFile tripFile(parser.value(tripOption));
+        if (tripFile.open(QIODevice::ReadOnly))
+            tripReceiver.receive(tripFile.readAll());
+        else
+            qWarning() << "Cannot open trip file" << tripFile.fileName() << tripFile.errorString();
+    }
 
     return app.exec();
 }

@@ -3,12 +3,21 @@ import QtQuick.Layouts
 import navigation
 
 // Bottom card while navigating: remaining time, remaining distance,
-// arrival time and a button to end navigation.
+// arrival time and a button to end navigation. On a route with stops it
+// also shows the next stop while it is not the final destination.
 Card {
     id: root
 
     property real remainingDistance: 0 // meters
     property int remainingSeconds: 0
+
+    property int stopCount: 0
+    property int nextStopIndex: 0
+    property string nextStopName
+    property real distanceToNextStop: 0 // meters
+    property int secondsToNextStop: 0
+
+    readonly property bool showNextStop: stopCount > 1 && nextStopIndex < stopCount - 1
 
     signal endClicked()
 
@@ -47,6 +56,20 @@ Card {
         ColumnLayout {
             Layout.fillWidth: true
             spacing: 2
+
+            // "Stop 1/3: Spodek · 2.4 km · 6 min"
+            Text {
+                visible: root.showNextStop
+                Layout.fillWidth: true
+                text: qsTr("Stop %1/%2").arg(root.nextStopIndex + 1).arg(root.stopCount)
+                      + (root.nextStopName.length > 0 ? ": " + root.nextStopName : "")
+                      + "  ·  " + root.formatDistance(root.distanceToNextStop)
+                      + "  ·  " + root.formatDuration(root.secondsToNextStop)
+                color: Theme.accent
+                font.pixelSize: Theme.fontSmall
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+            }
 
             Text {
                 text: root.formatDuration(root.remainingSeconds)

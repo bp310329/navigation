@@ -6,7 +6,7 @@
 #include "routing/RoutingService.h"
 
 namespace {
-// Closer than this to the end of the route counts as arrived
+// Closer than this to a stop counts as reached
 constexpr double ArrivalDistance = 25.0;
 // The "Then" maneuver is shown only when it follows the next one within this distance
 constexpr double ThenManeuverDistance = 400.0;
@@ -45,6 +45,14 @@ double NavigationController::distanceToManeuver() const { return m_distanceToMan
 QString NavigationController::thenManeuverType() const { return m_thenManeuverType; }
 double NavigationController::remainingDistance() const { return m_remainingDistance; }
 int NavigationController::remainingSeconds() const { return m_remainingSeconds; }
+QVariantList NavigationController::stops() const { return m_stopsList; }
+int NavigationController::stopCount() const { return int(m_tripStops.size()); }
+int NavigationController::nextStopIndex() const { return m_reachedStops; }
+QString NavigationController::nextStopName() const {
+    return m_reachedStops < m_tripStops.size() ? m_tripStops.at(m_reachedStops).name : QString();
+}
+double NavigationController::distanceToNextStop() const { return m_distanceToNextStop; }
+int NavigationController::secondsToNextStop() const { return m_secondsToNextStop; }
 double NavigationController::heading() const { return m_heading; }
 QVariantList NavigationController::traveledPath() const { return m_traveledPath; }
 QVariantList NavigationController::remainingPath() const { return m_remainingPath; }
@@ -54,8 +62,8 @@ void NavigationController::startNavigation() {
     if (!route.isValid())
         return;
 
+    startTrip(route.stops());
     m_tracker.setRoute(route);
-    m_arrived = false;
     m_offRouteTimer.invalidate();
     m_lastReroute.invalidate();
     setRerouting(false);
@@ -67,6 +75,7 @@ void NavigationController::startNavigation() {
 void NavigationController::stopNavigation() {
     setNavigating(false);
     setRerouting(false);
+    startTrip({});
 }
 
 void NavigationController::onPositionUpdated(const Position &position) {
@@ -84,9 +93,41 @@ void NavigationController::onRouteChanged() {
         stopNavigation();
         return;
     }
+
+    // A route through the last stops of the trip continues it (rerouting);
+    // any other route, e.g. a new one from the phone, starts a new trip
+    const QList<Destination> routeStops = route.stops();
+    const qsizetype offset = m_tripStops.size() - routeStops.size();
+    if (offset >= 0 && m_tripStops.mid(offset) == routeStops) {
+        m_routeFirstStop = int(offset);
+    } else {
+        startTrip(routeStops);
+    }
+
     m_tracker.setRoute(route);
     m_offRouteTimer.invalidate();
     updateProgress(m_locationProvider->position());
+}
+
+void NavigationController::startTrip(const QList<Destination> &stops) {
+    m_tripStops = stops;
+    m_routeFirstStop = 0;
+    m_reachedStops = 0;
+    m_arrived = false;
+    m_stopsList = RoutingService::stopsToVariantList(m_tripStops);
+    emit stopsChanged();
+}
+
+void NavigationController::setReachedStops(int count) {
+    count = qMin(count, int(m_tripStops.size()));
+    if (count <= m_reachedStops)
+        return;
+    const int previous = m_reachedStops;
+    m_reachedStops = count;
+    m_stopsList = RoutingService::stopsToVariantList(m_tripStops, m_reachedStops);
+    emit stopsChanged();
+    for (int i = previous; i < count; ++i)
+        emit stopReached(i);
 }
 
 void NavigationController::updateProgress(const Position &position) {
@@ -98,22 +139,29 @@ void NavigationController::updateProgress(const Position &position) {
     if (progress.nextManeuver < 0)
         return;
 
-    const Maneuver &next = route.maneuvers.at(progress.nextManeuver);
-    m_arrived = m_arrived || progress.remainingDistance < ArrivalDistance;
+    // Stops are reached in order: those of the legs already driven, plus the
+    // current one once close to it
+    int reachedInRoute = progress.leg;
+    if (m_tracker.distanceToLegEnd(progress, progress.leg) < ArrivalDistance)
+        ++reachedInRoute;
+    setReachedStops(m_routeFirstStop + reachedInRoute);
+    m_arrived = m_reachedStops >= m_tripStops.size();
 
+    const Maneuver &next = route.maneuvers.at(progress.nextManeuver);
     if (m_arrived) {
         m_maneuverType = QStringLiteral("arrive");
-        m_instruction = route.maneuvers.last().instruction;
+        m_instruction = instructionFor(int(route.maneuvers.size()) - 1);
         m_distanceToManeuver = progress.remainingDistance;
         m_thenManeuverType.clear();
     } else {
         m_maneuverType = maneuverKind(next.type);
-        m_instruction = next.instruction;
+        m_instruction = instructionFor(progress.nextManeuver);
         m_distanceToManeuver = progress.distanceToManeuver;
 
+        // No "Then" after arriving at a stop: the next leg starts from there
         m_thenManeuverType.clear();
         const int thenIndex = progress.nextManeuver + 1;
-        if (thenIndex < route.maneuvers.size()) {
+        if (thenIndex < route.maneuvers.size() && legEndingWith(progress.nextManeuver) < 0) {
             const Maneuver &then = route.maneuvers.at(thenIndex);
             const double gap = m_tracker.distanceAt(then.beginShapeIndex)
                              - m_tracker.distanceAt(next.beginShapeIndex);
@@ -124,6 +172,11 @@ void NavigationController::updateProgress(const Position &position) {
 
     m_remainingDistance = progress.remainingDistance;
     m_remainingSeconds = int(std::lround(progress.remainingTime));
+
+    const int nextStopLeg = m_reachedStops - m_routeFirstStop;
+    m_distanceToNextStop = m_arrived ? 0.0 : m_tracker.distanceToLegEnd(progress, nextStopLeg);
+    m_secondsToNextStop = m_arrived
+        ? 0 : int(std::lround(m_tracker.timeToLegEnd(progress, nextStopLeg)));
 
     // No heading source yet: until the GPS reports a direction of travel,
     // the direction of the route at the current position stands in for it
@@ -142,6 +195,36 @@ void NavigationController::updateProgress(const Position &position) {
     emit progressChanged();
 
     checkOffRoute(position, progress);
+}
+
+// Index of the leg whose "arrive" maneuver this is, or -1
+int NavigationController::legEndingWith(int maneuverIndex) const {
+    const QList<Leg> &legs = m_tracker.route().legs;
+    for (int i = 0; i < legs.size(); ++i) {
+        if (legs.at(i).lastManeuver == maneuverIndex)
+            return i;
+    }
+    return -1;
+}
+
+// Valhalla's instruction, except for arriving at a stop: Valhalla does not
+// know the stop names and calls every stop a destination
+QString NavigationController::instructionFor(int maneuverIndex) const {
+    const Route &route = m_tracker.route();
+    const QString valhallaInstruction = route.maneuvers.at(maneuverIndex).instruction;
+
+    const int leg = legEndingWith(maneuverIndex);
+    if (leg < 0)
+        return valhallaInstruction;
+
+    const int stopIndex = m_routeFirstStop + leg;
+    const bool finalStop = stopIndex == m_tripStops.size() - 1;
+    const QString name = route.legs.at(leg).stop.name;
+    if (!name.isEmpty())
+        return tr("Arrive at %1").arg(name);
+    if (!finalStop)
+        return tr("Arrive at stop %1").arg(stopIndex + 1);
+    return valhallaInstruction;
 }
 
 // Requests a new route from the current position once it has been away from
@@ -164,10 +247,14 @@ void NavigationController::checkOffRoute(const Position &position,
     if (m_lastReroute.isValid() && m_lastReroute.elapsed() < RerouteCooldownMs)
         return;
 
+    // Only through the stops not reached yet
+    const QList<Destination> remainingStops = m_tripStops.mid(m_reachedStops);
+    if (remainingStops.isEmpty())
+        return;
+
     m_lastReroute.start();
     setRerouting(true);
-    m_routingService->calculateRoute(position.coordinate(),
-                                     m_routingService->destination(),
+    m_routingService->calculateRoute(position.coordinate(), remainingStops,
                                      position.hasHeading ? position.heading : -1.0);
 }
 

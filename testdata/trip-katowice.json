@@ -1,0 +1,8 @@
+{
+    "stops": [
+        { "name": "Place 1", "latitude": 50.2314, "longitude": 18.9724 },
+        { "name": "Spodek", "latitude": 50.2662, "longitude": 19.0253 },
+        { "name": "Stadion Śląski", "latitude": 50.2893, "longitude": 18.9707 },
+        { "name": "Chorzów Rynek", "latitude": 50.2977, "longitude": 18.9543 }
+    ]
+}

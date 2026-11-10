@@ -2,9 +2,10 @@ import QtQuick
 import QtQuick.Layouts
 import navigation
 
-// Floating card at the bottom of the screen. Without a destination it offers
-// navigation with a route received over Bluetooth; with a destination picked
-// on the map it offers creating, clearing and starting the route.
+// Floating card at the bottom of the screen. Without a destination it waits
+// for a route from the phone (which may have several stops); with a
+// destination picked on the map it offers creating, clearing and starting
+// the route.
 Card {
     id: root
 
@@ -14,13 +15,17 @@ Card {
     property bool busy: false
     property string errorString
     property bool canCreateRoute: true
+    // Stops of the calculated route: [{ name, coordinate, reached }]
+    property var stops: []
 
-    signal startNavigationClicked()     // route received over Bluetooth
-    signal startRouteClicked()          // route created from the map destination
+    signal startRouteClicked()
     signal createRouteClicked()
     signal clearClicked()
 
     readonly property bool hasError: errorString.length > 0
+    // A route from the phone: calculated, being calculated or failed
+    readonly property bool hasPhoneRoute: !hasDestination && (hasRoute || busy || hasError)
+    readonly property string finalStopName: stops.length > 0 ? stops[stops.length - 1].name : ""
 
     implicitHeight: content.implicitHeight + 2 * Theme.cardPadding
 
@@ -30,6 +35,14 @@ Card {
         const lat = Math.abs(coordinate.latitude).toFixed(4) + "° " + (coordinate.latitude >= 0 ? "N" : "S")
         const lon = Math.abs(coordinate.longitude).toFixed(4) + "° " + (coordinate.longitude >= 0 ? "E" : "W")
         return lat + ", " + lon
+    }
+
+    function routeSummary() {
+        if (stops.length > 1)
+            return finalStopName.length > 0
+                ? qsTr("%1 stops · ends at %2").arg(stops.length).arg(finalStopName)
+                : qsTr("%1 stops").arg(stops.length)
+        return finalStopName.length > 0 ? finalStopName : qsTr("Route ready")
     }
 
     ColumnLayout {
@@ -51,7 +64,9 @@ Card {
 
                 Icon {
                     anchors.centerIn: parent
-                    path: root.hasDestination ? Icons.place : Icons.bluetooth
+                    path: root.hasDestination ? Icons.place
+                        : root.hasPhoneRoute ? Icons.directions
+                        : Icons.bluetooth
                     size: Theme.iconSmall
                     color: root.hasError ? Theme.danger : Theme.accent
                 }
@@ -63,7 +78,9 @@ Card {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.hasDestination ? qsTr("Selected destination") : qsTr("Where to?")
+                    text: root.hasDestination ? qsTr("Selected destination")
+                        : root.hasPhoneRoute ? qsTr("Route from phone")
+                        : qsTr("Where to?")
                     color: Theme.textPrimary
                     font.pixelSize: Theme.fontButton
                     font.weight: Font.DemiBold
@@ -72,11 +89,11 @@ Card {
 
                 Text {
                     Layout.fillWidth: true
-                    text: !root.hasDestination ? qsTr("Send a route from your phone or tap the map")
-                        : root.busy ? qsTr("Calculating route…")
+                    text: root.busy ? qsTr("Calculating route…")
                         : root.hasError ? root.errorString
-                        : root.hasRoute ? qsTr("Route ready")
-                        : root.formatCoordinate(root.destinationCoordinate)
+                        : root.hasRoute ? root.routeSummary()
+                        : root.hasDestination ? root.formatCoordinate(root.destinationCoordinate)
+                        : qsTr("Send a route from your phone or tap the map")
                     color: root.hasError ? Theme.danger : Theme.textSecondary
                     font.pixelSize: Theme.fontBody
                     elide: Text.ElideRight
@@ -85,18 +102,18 @@ Card {
         }
 
         RowLayout {
+            visible: root.hasDestination || root.hasPhoneRoute
             Layout.fillWidth: true
             spacing: 14
 
             PillButton {
-                visible: root.hasDestination
                 primary: false
                 iconPath: Icons.close
                 text: qsTr("Clear")
                 onClicked: root.clearClicked()
             }
 
-            // Create route, or recalculate it once it exists
+            // Create the route to the map destination, or recalculate it once it exists
             PillButton {
                 visible: root.hasDestination
                 Layout.fillWidth: !root.hasRoute
@@ -109,16 +126,13 @@ Card {
                 onClicked: root.createRouteClicked()
             }
 
-            // Start navigating: over Bluetooth without a destination,
-            // along the created route with one
             PillButton {
-                visible: !root.hasDestination || root.hasRoute
+                visible: root.hasRoute
                 Layout.fillWidth: true
                 iconPath: Icons.navigation
                 text: qsTr("Start navigation")
                 enabled: !root.busy
-                onClicked: root.hasDestination ? root.startRouteClicked()
-                                               : root.startNavigationClicked()
+                onClicked: root.startRouteClicked()
             }
         }
     }

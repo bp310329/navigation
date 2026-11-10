@@ -12,6 +12,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     Location
     Positioning
     Network
+    Bluetooth
 )
 
 # MapLibre Native for Qt
@@ -22,6 +23,7 @@ qt_standard_project_setup(REQUIRES 6.8)
 qt_add_executable(appnavigation
     src/main.cpp
     src/controller/NavigationController.cpp
+    src/controller/TripReceiver.cpp
     src/bluetooth/BluetoothManager.cpp
     src/data/DestinationParser.cpp
     src/location/LocationProvider.cpp
@@ -32,6 +34,7 @@ qt_add_executable(appnavigation
 
     include/bluetooth/BluetoothManager.h
     include/controller/NavigationController.h
+    include/controller/TripReceiver.h
     include/data/Destination.h
     include/data/DestinationParser.h
     include/data/Position.h
@@ -84,6 +87,7 @@ target_link_libraries(appnavigation
         Qt6::Location
         Qt6::Positioning
         Qt6::Network
+        Qt6::Bluetooth
         QMapLibre::Location
 )
 

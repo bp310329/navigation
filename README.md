@@ -21,3 +21,26 @@ cmake --build --preset local
 
 The output goes to `build/local/`. In VS Code, CMake Tools picks up the `local` preset automatically.
 To use a different Valhalla server without rebuilding, set the `NAV_VALHALLA_URL` environment variable before starting the app.
+
+## Routes from the phone
+
+The phone sends a route as JSON. The stops are in driving order, and the last one is the final destination. `name` is optional. A route can have at most 19 stops.
+
+```json
+{
+    "stops": [
+        { "name": "Spodek", "latitude": 50.2662, "longitude": 19.0253 },
+        { "name": "Chorzów Rynek", "latitude": 50.2977, "longitude": 18.9543 }
+    ]
+}
+```
+
+A single destination object (`{ "name": ..., "latitude": ..., "longitude": ... }`) is also accepted, as a route with one stop.
+
+`TripReceiver::receive()` takes this data and calculates the route from the current position. While navigating, stops are reached in order. If the car leaves the route, the new route goes only through the stops that haven't been reached yet.
+
+To test without a phone, load a route from a file:
+
+```sh
+appnavigation --trip testdata/trip-katowice.json
+```

@@ -19,12 +19,12 @@ const Route &RoutingService::route() const {
     return m_route;
 }
 
-QGeoCoordinate RoutingService::destination() const {
-    return m_destination;
-}
-
 QVariantList RoutingService::path() const {
     return m_path;
+}
+
+QVariantList RoutingService::stops() const {
+    return m_stops;
 }
 
 bool RoutingService::busy() const {
@@ -38,15 +38,28 @@ QString RoutingService::errorString() const {
 void RoutingService::calculateRoute(const QGeoCoordinate &from,
                                     const QGeoCoordinate &to,
                                     double heading) {
-    if (!from.isValid() || !to.isValid()) {
+    Destination destination;
+    destination.latitude = to.latitude();
+    destination.longitude = to.longitude();
+    calculateRoute(from, QList<Destination> { destination }, heading);
+}
+
+void RoutingService::calculateRoute(const QGeoCoordinate &from,
+                                    const QList<Destination> &stops,
+                                    double heading) {
+    if (!from.isValid() || stops.isEmpty()) {
         setErrorString(tr("Invalid start or destination"));
         return;
+    }
+    for (const Destination &stop : stops) {
+        if (!stop.coordinate().isValid()) {
+            setErrorString(tr("Invalid start or destination"));
+            return;
+        }
     }
 
     // Only the newest request matters
     abortPendingRequest();
-
-    m_destination = to;
 
     QJsonObject start { { "lat", from.latitude() }, { "lon", from.longitude() } };
     if (heading >= 0.0) {
@@ -54,11 +67,18 @@ void RoutingService::calculateRoute(const QGeoCoordinate &from,
         start.insert("heading_tolerance", 45);
     }
 
+    // Every stop is a "break" location: the route stops there and starts a new leg
+    QJsonArray locations { start };
+    for (const Destination &stop : stops) {
+        locations.append(QJsonObject {
+            { "lat", stop.latitude },
+            { "lon", stop.longitude },
+            { "type", "break" },
+        });
+    }
+
     const QJsonObject body {
-        { "locations", QJsonArray {
-            start,
-            QJsonObject { { "lat", to.latitude() }, { "lon", to.longitude() } },
-        } },
+        { "locations", locations },
         { "costing", "auto" },
         { "units", "kilometers" },
     };
@@ -75,7 +95,7 @@ void RoutingService::calculateRoute(const QGeoCoordinate &from,
         request, QJsonDocument(body).toJson(QJsonDocument::Compact));
     m_pendingReply = reply;
     connect(reply, &QNetworkReply::finished,
-            this, [this, reply] { onReplyFinished(reply); });
+            this, [this, reply, stops] { onReplyFinished(reply, stops); });
 }
 
 void RoutingService::clearRoute() {
@@ -94,7 +114,8 @@ void RoutingService::abortPendingRequest() {
     setBusy(false);
 }
 
-void RoutingService::onReplyFinished(QNetworkReply *reply) {
+void RoutingService::onReplyFinished(QNetworkReply *reply,
+                                     const QList<Destination> &stops) {
     reply->deleteLater();
     if (reply == m_pendingReply)
         m_pendingReply = nullptr;
@@ -111,7 +132,7 @@ void RoutingService::onReplyFinished(QNetworkReply *reply) {
         return;
     }
 
-    const Route route = parseRoute(json.value("trip").toObject());
+    const Route route = parseRoute(json.value("trip").toObject(), stops);
     if (!route.isValid()) {
         setErrorString(tr("Valhalla returned no route"));
         return;
@@ -126,20 +147,49 @@ void RoutingService::setRoute(const Route &route) {
     m_path.reserve(route.shape.size());
     for (const QGeoCoordinate &coordinate : route.shape)
         m_path.append(QVariant::fromValue(coordinate));
+    m_stops = stopsToVariantList(route.stops());
     emit routeChanged();
 }
 
-// Joins all legs into one shape; maneuver shape indices are shifted so they
-// refer to the joined shape.
-Route RoutingService::parseRoute(const QJsonObject &trip) {
+QVariantList RoutingService::stopsToVariantList(const QList<Destination> &stops,
+                                                int reachedCount) {
+    QVariantList list;
+    list.reserve(stops.size());
+    for (qsizetype i = 0; i < stops.size(); ++i) {
+        list.append(QVariantMap {
+            { "name", stops.at(i).name },
+            { "coordinate", QVariant::fromValue(stops.at(i).coordinate()) },
+            { "reached", i < reachedCount },
+        });
+    }
+    return list;
+}
+
+// Joins all legs into one shape. Each leg starts at the stop where the
+// previous one ended, so that shared point is kept once; maneuver shape
+// indices are shifted so they refer to the joined shape. Each leg ends with
+// an "arrive" maneuver at its stop.
+Route RoutingService::parseRoute(const QJsonObject &trip, const QList<Destination> &stops) {
     Route route;
     const QJsonArray legs = trip.value("legs").toArray();
-    for (const QJsonValue &legValue : legs) {
-        const QJsonObject leg = legValue.toObject();
-        const int offset = route.shape.size();
-        route.shape.append(decodePolyline(leg.value("shape").toString().toLatin1()));
+    // One leg per stop, as requested
+    if (legs.size() != stops.size())
+        return route;
+
+    for (qsizetype legIndex = 0; legIndex < legs.size(); ++legIndex) {
+        const QJsonObject leg = legs.at(legIndex).toObject();
+        const QList<QGeoCoordinate> legShape =
+            decodePolyline(leg.value("shape").toString().toLatin1());
+        if (legShape.isEmpty())
+            return {};
+
+        const bool joinsPrevious = !route.shape.isEmpty();
+        const int offset = joinsPrevious ? int(route.shape.size()) - 1 : 0;
+        route.shape.append(joinsPrevious ? legShape.mid(1) : legShape);
 
         const QJsonArray maneuvers = leg.value("maneuvers").toArray();
+        if (maneuvers.isEmpty())
+            return {};
         for (const QJsonValue &maneuverValue : maneuvers) {
             const QJsonObject json = maneuverValue.toObject();
             Maneuver maneuver;
@@ -151,6 +201,15 @@ Route RoutingService::parseRoute(const QJsonObject &trip) {
             maneuver.time = json.value("time").toDouble();
             route.maneuvers.append(maneuver);
         }
+
+        const QJsonObject summary = leg.value("summary").toObject();
+        Leg routeLeg;
+        routeLeg.stop = stops.at(legIndex);
+        routeLeg.endShapeIndex = int(route.shape.size()) - 1;
+        routeLeg.lastManeuver = int(route.maneuvers.size()) - 1;
+        routeLeg.length = summary.value("length").toDouble() * 1000.0;
+        routeLeg.time = summary.value("time").toDouble();
+        route.legs.append(routeLeg);
     }
 
     const QJsonObject summary = trip.value("summary").toObject();

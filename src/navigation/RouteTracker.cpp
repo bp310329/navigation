@@ -75,20 +75,53 @@ RouteTracker::Progress RouteTracker::update(const QGeoCoordinate &position) {
     progress.distanceToManeuver = qMax(
         0.0, distanceAt(maneuvers.at(next).beginShapeIndex) - progress.traveledDistance);
 
-    // Remaining time: the untraveled share of the current maneuver plus all later ones
-    double remainingTime = 0.0;
-    for (int i = next; i < maneuvers.size(); ++i)
-        remainingTime += maneuvers.at(i).time;
+    // The leg being driven is the one the next maneuver belongs to
+    progress.leg = int(m_route.legs.size()) - 1;
+    for (int i = 0; i < m_route.legs.size(); ++i) {
+        if (m_route.legs.at(i).lastManeuver >= next) {
+            progress.leg = i;
+            break;
+        }
+    }
+
+    progress.remainingTime = timeToManeuver(progress, int(maneuvers.size()) - 1)
+                           + maneuvers.last().time;
+
+    return progress;
+}
+
+double RouteTracker::distanceToLegEnd(const Progress &progress, int leg) const {
+    if (leg < 0 || leg >= m_route.legs.size())
+        return 0.0;
+    return qMax(0.0, distanceAt(m_route.legs.at(leg).endShapeIndex)
+                     - progress.traveledDistance);
+}
+
+double RouteTracker::timeToLegEnd(const Progress &progress, int leg) const {
+    if (leg < 0 || leg >= m_route.legs.size())
+        return 0.0;
+    return timeToManeuver(progress, m_route.legs.at(leg).lastManeuver);
+}
+
+// Expected time until the start of `maneuver`: the untraveled share of the
+// current maneuver plus all maneuvers from the next one up to `maneuver`
+double RouteTracker::timeToManeuver(const Progress &progress, int maneuver) const {
+    const QList<Maneuver> &maneuvers = m_route.maneuvers;
+    const int next = progress.nextManeuver;
+    if (next < 0 || maneuver < next || maneuver >= maneuvers.size())
+        return 0.0;
+
+    double time = 0.0;
+    for (int i = next; i < maneuver; ++i)
+        time += maneuvers.at(i).time;
     if (next > 0) {
         const Maneuver &current = maneuvers.at(next - 1);
         const double currentLength = distanceAt(maneuvers.at(next).beginShapeIndex)
                                    - distanceAt(current.beginShapeIndex);
         if (currentLength > 0.0)
-            remainingTime += current.time * progress.distanceToManeuver / currentLength;
+            time += current.time * progress.distanceToManeuver / currentLength;
     }
-    progress.remainingTime = remainingTime;
-
-    return progress;
+    return time;
 }
 
 // Projects the position onto a segment in a local flat approximation, which is

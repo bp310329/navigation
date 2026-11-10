@@ -1,24 +1,27 @@
 #pragma once
 
 #include <QObject>
+#include <QBluetoothSocket>
+#include <QBluetoothAddress>
+#include <QBluetoothUuid>
+
 
 class BluetoothManager : public QObject {
     Q_OBJECT
-    Q_PROPERTY(bool bluetoothStatus
-               READ bluetoothStatus
-               NOTIFY bluetoothStatusChanged)
 
 public:
-    explicit BluetoothManager(QObject *parent = nullptr) : QObject(parent) {};
+    explicit BluetoothManager(QObject *parent = nullptr);
 
-    Q_INVOKABLE void startBluetooth();
-    Q_INVOKABLE void stopBluetooth();
-
-    bool bluetoothStatus() const;
+    void connectToDevice(const QBluetoothAddress &address, const QBluetoothUuid &uuid);
+    void sendData(const QByteArray &data);
 
 signals:
-    void bluetoothStatusChanged(bool status);
+    void connected();
+    void disconnected();
+    void dataReceived(const QByteArray &data);
+    void errorOccurred(const QString &error);
 
 private:
-    bool m_bluetoothStatus = false;
+    QBluetoothSocket *socket;
+    QByteArray receiveBuffer;
 };

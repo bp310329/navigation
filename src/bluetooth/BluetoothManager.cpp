@@ -1,24 +1,51 @@
+// BluetoothManager.cpp
+
 #include "bluetooth/BluetoothManager.h"
 
-void BluetoothManager::startBluetooth()
+BluetoothManager::BluetoothManager(QObject *parent)
+    : QObject(parent)
 {
-    if (m_bluetoothStatus)
-        return;
+    socket = new QBluetoothSocket(
+        QBluetoothServiceInfo::RfcommProtocol,
+        this
+    );
 
-    m_bluetoothStatus = true;
-    emit bluetoothStatusChanged(m_bluetoothStatus);
+    connect(socket, &QBluetoothSocket::connected,
+            this, &BluetoothManager::connected);
+
+    connect(socket, &QBluetoothSocket::disconnected,
+            this, &BluetoothManager::disconnected);
+
+    connect(socket, &QBluetoothSocket::readyRead,
+            this, [this]() {
+        receiveBuffer.append(socket->readAll());
+
+        // Tutaj docelowo nastąpi dekodowanie
+        // ramek protokołu komunikacyjnego.
+        emit dataReceived(receiveBuffer);
+        receiveBuffer.clear();
+    });
+
+    connect(socket, &QBluetoothSocket::errorOccurred,
+            this, [this](QBluetoothSocket::SocketError) {
+        emit errorOccurred(socket->errorString());
+    });
 }
 
-void BluetoothManager::stopBluetooth()
+void BluetoothManager::connectToDevice(
+    const QBluetoothAddress &address,
+    const QBluetoothUuid &serviceUuid)
 {
-    if (!m_bluetoothStatus)
-        return;
-
-    m_bluetoothStatus = false;
-    emit bluetoothStatusChanged(m_bluetoothStatus);
+    socket->connectToService(
+        address,
+        serviceUuid,
+        QIODevice::ReadWrite
+    );
 }
 
-bool BluetoothManager::bluetoothStatus() const
+void BluetoothManager::sendData(const QByteArray &data)
 {
-    return m_bluetoothStatus;
+    if (socket->isOpen()) {
+        socket->write(data);
+    }
 }

@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtLocation
 import QtPositioning
@@ -26,6 +28,9 @@ Item {
 
     // Calculated route geometry, bound from RoutingService by the parent
     property var routePath: []
+    // Stops of the route in driving order: [{ name, coordinate, reached }].
+    // Intermediate stops get numbered markers, the last one the destination pin.
+    property var stops: []
 
     // Turn-by-turn guidance, bound from NavigationController by the parent.
     // While navigating the map follows the position rotated to `heading`,
@@ -149,10 +154,62 @@ Item {
             line.color: Theme.accent
         }
 
-        // Destination marker
+        // Stops of the route; the last one is drawn as the destination pin
+        MapItemView {
+            model: root.stops
+
+            delegate: MapQuickItem {
+                id: stopMarker
+
+                required property var modelData
+                required property int index
+                readonly property bool isFinal: index === root.stops.length - 1
+
+                coordinate: modelData.coordinate
+                z: isFinal ? 2 : 1
+                anchorPoint.x: stopIcon.width / 2
+                // Tip of the pin is at y = 22 of the 24x24 icon
+                anchorPoint.y: isFinal ? stopIcon.height * 22 / 24 : stopIcon.height / 2
+
+                sourceItem: Item {
+                    id: stopIcon
+                    width: stopMarker.isFinal ? 72 : 44
+                    height: width
+
+                    Icon {
+                        visible: stopMarker.isFinal
+                        anchors.fill: parent
+                        path: Icons.place
+                        size: parent.width
+                        color: stopMarker.modelData.reached ? Theme.routeTraveledCasing : Theme.danger
+                        strokeColor: "white"
+                        strokeWidth: 1.2
+                    }
+
+                    Rectangle {
+                        visible: !stopMarker.isFinal
+                        anchors.fill: parent
+                        radius: width / 2
+                        color: stopMarker.modelData.reached ? Theme.routeTraveledCasing : Theme.accent
+                        border.color: "white"
+                        border.width: 4
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: stopMarker.index + 1
+                            color: Theme.textOnAccent
+                            font.pixelSize: Theme.fontSmall
+                            font.weight: Font.Bold
+                        }
+                    }
+                }
+            }
+        }
+
+        // Destination picked on the map, until a route to it exists
         MapQuickItem {
             id: destinationMarker
-            visible: root.hasDestination
+            visible: root.hasDestination && root.stops.length === 0
             coordinate: root.destinationCoordinate
             anchorPoint.x: destinationPin.width / 2
             // Tip of the pin is at y = 22 of the 24x24 icon

@@ -14,6 +14,7 @@ ApplicationWindow {
     required property NavigationController controller
     required property LocationProvider locationProvider
     required property RoutingService routingService
+    required property TripReceiver tripReceiver
 
     readonly property bool navigationVisible: controller.navigating
 
@@ -41,6 +42,9 @@ ApplicationWindow {
         locationAvailable: window.locationProvider.locationAvailable
         currentCoordinate: window.locationProvider.position.coordinate
         routePath: window.routingService.path
+        // While navigating, the whole trip with the reached stops marked
+        stops: window.navigationVisible ? window.controller.stops
+                                        : window.routingService.stops
 
         navigating: window.controller.navigating
         heading: window.controller.heading
@@ -51,7 +55,13 @@ ApplicationWindow {
         onDestinationCoordinateChanged: window.routingService.clearRoute()
     }
 
-    // --- Browsing: pick a destination or wait for a route over Bluetooth ---
+    // A route from the phone replaces the destination picked on the map
+    Connections {
+        target: window.tripReceiver
+        function onTripReceived() { mapView.clearDestination() }
+    }
+
+    // --- Browsing: pick a destination or wait for a route from the phone ---
 
     RoutePanel {
         id: routePanel
@@ -67,15 +77,16 @@ ApplicationWindow {
         busy: window.routingService.busy
         errorString: window.routingService.errorString
         canCreateRoute: mapView.hasLocation
+        stops: window.routingService.stops
 
-        onStartNavigationClicked: {
-            // TODO: start navigation with the route received over Bluetooth
-        }
         onStartRouteClicked: window.controller.startNavigation()
         onCreateRouteClicked: window.routingService.calculateRoute(
                                   mapView.currentCoordinate,
                                   mapView.destinationCoordinate)
-        onClearClicked: mapView.clearDestination()
+        onClearClicked: {
+            mapView.clearDestination()
+            window.routingService.clearRoute()
+        }
     }
 
     // --- Navigating ---
@@ -105,6 +116,11 @@ ApplicationWindow {
 
         remainingDistance: window.controller.remainingDistance
         remainingSeconds: window.controller.remainingSeconds
+        stopCount: window.controller.stopCount
+        nextStopIndex: window.controller.nextStopIndex
+        nextStopName: window.controller.nextStopName
+        distanceToNextStop: window.controller.distanceToNextStop
+        secondsToNextStop: window.controller.secondsToNextStop
 
         onEndClicked: window.controller.stopNavigation()
     }
