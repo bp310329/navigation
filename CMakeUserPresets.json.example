@@ -1,0 +1,25 @@
+{
+    "version": 6,
+    "configurePresets": [
+        {
+            "name": "local",
+            "displayName": "Local (this device)",
+            "inherits": "windows",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.10.3/msvc2022_64;C:/dev/maplibre-install",
+                "NAV_VALHALLA_URL": "http://localhost:8002"
+            },
+            "environment": {
+                "PATH": "C:/Qt/6.10.3/msvc2022_64/bin;$penv{PATH}"
+            },
+            "vendor": {
+                "qt-cpp": {
+                    "VSCODE_QT_INSTALLATION": "C:/Qt/6.10.3/msvc2022_64"
+                }
+            }
+        }
+    ],
+    "buildPresets": [
+        { "name": "local", "configurePreset": "local" }
+    ]
+}

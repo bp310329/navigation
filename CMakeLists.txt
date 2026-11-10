@@ -125,6 +125,13 @@ target_include_directories(appnavigation PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include/routing"
 )
 
+# Default Valhalla server, set per device in CMakeUserPresets.json.
+# The NAV_VALHALLA_URL environment variable overrides it at runtime.
+set(NAV_VALHALLA_URL "http://localhost:8002" CACHE STRING "Default Valhalla routing server URL")
+target_compile_definitions(appnavigation PRIVATE
+    NAV_DEFAULT_VALHALLA_URL="${NAV_VALHALLA_URL}"
+)
+
 include(GNUInstallDirs)
 
 install(TARGETS appnavigation

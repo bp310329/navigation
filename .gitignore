@@ -80,3 +80,8 @@ CMakeLists.txt.user*
 .rcc/
 .uic/
 /build*/
+
+# Per-device configuration (see CMakeUserPresets.json.example)
+CMakeUserPresets.json
+.qmlls.ini
+/builds/

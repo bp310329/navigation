@@ -22,8 +22,11 @@ int main(int argc, char *argv[])
 
     LocationProvider locationProvider(&positionSource);
 
-    // Valhalla routing server (running locally in WSL)
-    RoutingService routingService(QUrl("http://172.18.77.37:8002"));
+    // Valhalla routing server: NAV_VALHALLA_URL environment variable, or the
+    // per-device default set at configure time (see CMakeUserPresets.json)
+    const QString valhallaUrl = qEnvironmentVariable("NAV_VALHALLA_URL",
+                                                     QStringLiteral(NAV_DEFAULT_VALHALLA_URL));
+    RoutingService routingService{QUrl(valhallaUrl)};
 
     NavigationController controller(&locationProvider, &routingService);
 
